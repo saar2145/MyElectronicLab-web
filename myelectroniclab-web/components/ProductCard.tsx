@@ -1,11 +1,12 @@
-// Version: 2.0
-// Title: Product Card | Important Data: clickable (opens ProductModal), quick
-// "add to cart" button with green flash animation - matches original site's
-// flash-added CSS effect (green overlay + checkmark, ~1.5s).
+// Version: 3.0
+// Title: Product Card | Important Data: Iconify icons (solar:cart-plus-bold /
+// solar:check-circle-bold / solar:gallery-broken-bold) replacing emojis, dark-mode
+// aware background (bg-brand-cardbg).
 
 'use client';
 
 import { useState } from 'react';
+import { Icon } from '@iconify/react';
 import { GroupedProduct } from '@/lib/catalog';
 import { cloudinaryTransform } from '@/lib/cloudinary';
 import { useCart } from '@/lib/cart-context';
@@ -39,11 +40,11 @@ export default function ProductCard({
   return (
     <div
       onClick={() => onOpen(product)}
-      className="relative flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg hover:ring-brand-link"
+      className="relative flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-brand-cardbg shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg hover:ring-brand-link"
     >
       {flash && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-green-500/60 bg-green-500/15">
-          <span className="text-4xl font-black text-green-600">✓</span>
+        <div className="flash-added-overlay pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-green-500/60 bg-green-500/15">
+          <Icon icon="solar:check-circle-bold" width={54} className="text-green-600" />
         </div>
       )}
 
@@ -57,7 +58,7 @@ export default function ProductCard({
             loading="lazy"
           />
         ) : (
-          <span className="text-4xl opacity-40">📦</span>
+          <Icon icon="solar:gallery-broken-bold" width={36} className="opacity-30" />
         )}
       </div>
 
@@ -80,9 +81,10 @@ export default function ProductCard({
           )}
           <button
             onClick={handleAdd}
-            className="rounded-lg bg-brand-link px-3 py-1.5 text-xs font-bold text-brand-text transition hover:brightness-95"
+            className="flex items-center gap-1 rounded-lg bg-brand-link px-3 py-1.5 text-xs font-bold text-brand-text transition hover:brightness-95"
           >
-            🛒 הוסף
+            <Icon icon="solar:cart-plus-bold" width={14} />
+            הוסף
           </button>
         </div>
       </div>

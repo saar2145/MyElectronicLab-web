@@ -1,8 +1,10 @@
-// Version: 1.0
-// Title: Search Bar | Important Data: controlled input, dispatches to parent state
-// in CatalogView, matches original placeholder text/style.
+// Version: 2.0
+// Title: Search Bar | Important Data: Iconify magnifier icon (solar:magnifer-bold)
+// replacing emoji.
 
 'use client';
+
+import { Icon } from '@iconify/react';
 
 export default function SearchBar({
   value,
@@ -21,7 +23,7 @@ export default function SearchBar({
         className="w-full rounded-full bg-white/90 py-3 pl-5 pr-11 text-sm text-brand-text placeholder:text-brand-textsoft focus:outline-none focus:ring-2 focus:ring-white"
       />
       <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-brand-textsoft">
-        🔍
+        <Icon icon="solar:magnifer-bold" width={17} />
       </span>
     </div>
   );

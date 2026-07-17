@@ -1,10 +1,10 @@
-// Version: 1.0
-// Title: Cart View | Important Data: "buy all" opens each item's affiliate link in
-// a new tab (window.open loop) - matches original site's cart checkout behavior
-// (there is no real checkout; purchases happen directly on AliExpress).
+// Version: 2.0
+// Title: Cart View | Important Data: Iconify icons, dark-mode aware backgrounds,
+// gradient uses CSS var (--header-grad-from/to) so it also flips correctly in dark mode.
 
 'use client';
 
+import { Icon } from '@iconify/react';
 import { useCart } from '@/lib/cart-context';
 import { cloudinaryTransform } from '@/lib/cloudinary';
 
@@ -21,14 +21,15 @@ export default function CartView({ onBack }: { onBack: () => void }) {
     <main className="mx-auto min-h-[70vh] max-w-3xl px-4 py-6">
       <button
         onClick={onBack}
-        className="mb-4 text-sm font-semibold text-brand-link hover:underline"
+        className="mb-4 flex items-center gap-1 text-sm font-semibold text-brand-link hover:underline"
       >
-        → חזרה לקטלוג
+        <Icon icon="solar:arrow-right-bold" width={15} />
+        חזרה לקטלוג
       </button>
 
       {items.length === 0 ? (
         <div className="py-20 text-center text-brand-textsoft">
-          <div className="mb-2 text-4xl">🛒</div>
+          <Icon icon="solar:cart-large-minimalistic-bold" width={44} className="mx-auto mb-2 opacity-40" />
           העגלה שלך ריקה
         </div>
       ) : (
@@ -39,14 +40,14 @@ export default function CartView({ onBack }: { onBack: () => void }) {
               return (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm ring-1 ring-black/5"
+                  className="flex items-center gap-3 rounded-xl bg-brand-cardbg p-3 shadow-sm ring-1 ring-black/5"
                 >
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-picture">
                     {img ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={img} alt={item.name} className="h-full w-full object-contain" />
                     ) : (
-                      <span className="text-xl opacity-40">📦</span>
+                      <Icon icon="solar:box-bold" width={22} className="opacity-30" />
                     )}
                   </div>
 
@@ -66,7 +67,7 @@ export default function CartView({ onBack }: { onBack: () => void }) {
                     >
                       −
                     </button>
-                    <span className="w-5 text-center text-sm">{item.qty}</span>
+                    <span className="w-5 text-center text-sm text-brand-text">{item.qty}</span>
                     <button
                       onClick={() => setQty(item.id, item.qty + 1)}
                       className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-bg text-brand-text"
@@ -92,17 +93,18 @@ export default function CartView({ onBack }: { onBack: () => void }) {
             })}
           </div>
 
-          <div className="mt-6 flex items-center justify-between rounded-xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+          <div className="mt-6 flex items-center justify-between rounded-xl bg-brand-cardbg p-4 shadow-sm ring-1 ring-black/5">
             <span className="text-sm text-brand-textsoft">סה&quot;כ לתשלום</span>
             <span className="text-xl font-black text-brand-text">₪{totalPrice}</span>
           </div>
 
           <button
             onClick={buyAll}
-            className="mt-4 w-full rounded-xl py-3 text-sm font-bold text-white shadow-md"
-            style={{ background: 'linear-gradient(135deg, #1565C0 0%, #0842A0 100%)' }}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white shadow-md"
+            style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
           >
-            🚀 רכישת כל המוצרים בעגלה
+            <Icon icon="solar:rocket-bold" width={16} />
+            רכישת כל המוצרים בעגלה
           </button>
 
           <p className="mt-2 text-center text-xs text-brand-textsoft">

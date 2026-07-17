@@ -18,7 +18,7 @@ export default function Sidebar({ categories }: { categories: CategoryGroup[] })
   if (categories.length === 0) return null;
 
   return (
-    <nav className="fixed top-24 right-4 z-40 hidden max-h-[calc(100vh-110px)] w-64 overflow-y-auto rounded-2xl bg-white shadow-md ring-1 ring-black/5 md:block">
+    <nav className="fixed top-[300px] right-4 z-40 hidden max-h-[calc(100vh-320px)] w-64 overflow-y-auto rounded-2xl bg-brand-cardbg shadow-md ring-1 ring-black/5 md:block">
       <div className="border-b border-brand-category px-4 py-3 text-xs font-bold text-brand-textsoft">
         קטגוריות
       </div>

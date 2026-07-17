@@ -1,35 +1,66 @@
 @import "tailwindcss";
 
+/* ============================================================
+   פלטת צבעים - זהה לחלוטין לאתר המקורי (Index.html v3.6+)
+   מוגדר כ-CSS custom properties כדי לתמוך במעבר בהיר/כהה בזמן ריצה
+   ============================================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand-name: #bdd8ff;
+  --brand-model: #b4edf5;
+  --brand-link: #b8ccee;
+  --brand-picture: #d2ebff;
+  --brand-price: #ffd4a8;
+  --brand-category: #bdd0e5;
+  --brand-bg: #ecf2ff;
+  --brand-card-bg: #ffffff;
+  --brand-text: #091e3a;
+  --brand-textsoft: #4e6e92;
+  --header-grad-from: #1565c0;
+  --header-grad-to: #0842a0;
+}
+
+html[data-theme="dark"] {
+  --brand-name: #153a6a;
+  --brand-model: #0c4d5e;
+  --brand-link: #14305a;
+  --brand-picture: #103550;
+  --brand-price: #553a18;
+  --brand-category: #182e44;
+  --brand-bg: #081626;
+  --brand-card-bg: #0d2238;
+  --brand-text: #e0efff;
+  --brand-textsoft: #6090bc;
+  --header-grad-from: #0d3570;
+  --header-grad-to: #061630;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-
-  /* פלטת המותג - זהה לאתר המקורי (Index.html v3.6) */
-  --color-brand-name: #bdd8ff;
-  --color-brand-model: #b4edf5;
-  --color-brand-link: #b8ccee;
-  --color-brand-picture: #d2ebff;
-  --color-brand-price: #ffd4a8;
-  --color-brand-category: #bdd0e5;
-  --color-brand-bg: #ecf2ff;
-  --color-brand-text: #091e3a;
-  --color-brand-textsoft: #4e6e92;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-brand-name: var(--brand-name);
+  --color-brand-model: var(--brand-model);
+  --color-brand-link: var(--brand-link);
+  --color-brand-picture: var(--brand-picture);
+  --color-brand-price: var(--brand-price);
+  --color-brand-category: var(--brand-category);
+  --color-brand-bg: var(--brand-bg);
+  --color-brand-cardbg: var(--brand-card-bg);
+  --color-brand-text: var(--brand-text);
+  --color-brand-textsoft: var(--brand-textsoft);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--brand-bg);
+  color: var(--brand-text);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* אנימציית "נוסף לעגלה" - עוגלה ירוקה שקופה + וי (זהה למקור) */
+@keyframes flashCardAnim {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  72% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.flash-added-overlay {
+  animation: flashCardAnim 1.5s ease forwards;
 }

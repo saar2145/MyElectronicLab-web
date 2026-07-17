@@ -1,21 +1,29 @@
-// Version: 1.1
-// Title: App Shell | Important Data: single source of truth for view state
-// ('catalog' | 'cart'), search query, and selected product (modal). Wraps children
-// in CartProvider so useCart() works anywhere in the tree. Fix from v1.0: search
-// query state lifted here so SearchBar can render inside the blue header while
-// CategorySection/Sidebar render in the body below it.
+// Version: 2.0
+// Title: App Shell | Important Data: full integration - banner, theme toggle,
+// FAB group (chat/ticket/about), all modals, refresh via router.refresh().
+// This is the "1:1 parity" pass matching the original Index.html feature set
+// (chat/ticket UIs are shells only - TODO Step 2: wire to backend).
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Icon } from '@iconify/react';
 import { ProductRow } from '@/lib/supabase';
 import { groupCatalog, searchCatalog, GroupedProduct } from '@/lib/catalog';
 import { CartProvider, useCart } from '@/lib/cart-context';
+import { ThemeProvider } from '@/lib/theme-context';
+import Banner from './Banner';
+import HeaderStatusRow from './HeaderStatusRow';
 import SearchBar from './SearchBar';
 import Sidebar from './Sidebar';
 import CategorySection from './CategorySection';
 import ProductModal from './ProductModal';
 import CartView from './CartView';
+import FabGroup from './FabGroup';
+import AboutModal from './AboutModal';
+import TicketModal from './TicketModal';
+import ChatPanel from './ChatPanel';
 
 function HeaderNav({
   view,
@@ -27,27 +35,27 @@ function HeaderNav({
   const { totalCount } = useCart();
 
   return (
-    <div className="mb-4 flex items-center justify-between gap-2">
+    <div className="mb-3 flex items-center justify-between gap-2">
       <button
         onClick={() => setView('catalog')}
-        className={`shrink-0 rounded-full px-3 py-2 text-sm font-bold shadow-sm transition sm:px-4 ${
+        className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold shadow-sm transition sm:px-4 ${
           view === 'catalog' ? 'bg-white text-brand-text' : 'bg-white/20 text-white'
         }`}
       >
-        🗂️ <span className="hidden sm:inline">קטלוג</span>
+        <Icon icon="solar:book-2-bold" width={17} />
+        <span className="hidden sm:inline">קטלוג</span>
       </button>
 
-      <h1 className="truncate text-base font-black tracking-wide text-white sm:text-2xl">
-        📦 קטלוג רכיבי אלקטרוניקה
-      </h1>
+      <div className="min-w-0 flex-1" />
 
       <button
         onClick={() => setView('cart')}
-        className={`relative shrink-0 rounded-full px-3 py-2 text-sm font-bold shadow-sm transition sm:px-4 ${
+        className={`relative flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold shadow-sm transition sm:px-4 ${
           view === 'cart' ? 'bg-white text-brand-text' : 'bg-white/20 text-white'
         }`}
       >
-        🛒 <span className="hidden sm:inline">עגלה</span>
+        <Icon icon="solar:cart-large-minimalistic-bold" width={17} />
+        <span className="hidden sm:inline">עגלה</span>
         {totalCount > 0 && (
           <span className="absolute -top-1.5 -left-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
             {totalCount}
@@ -59,9 +67,25 @@ function HeaderNav({
 }
 
 function ShellInner({ rows }: { rows: ProductRow[] }) {
+  const router = useRouter();
   const [view, setView] = useState<'catalog' | 'cart'>('catalog');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<GroupedProduct | null>(null);
+  const [modal, setModal] = useState<'about' | 'ticket' | 'chat' | null>(null);
+  const [lastUpdated, setLastUpdated] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  // מעדכן חותמת זמן וכיבוי ה-spinner בכל פעם ש-rows מתעדכן (אחרי router.refresh())
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- סנכרון מדעת עם שינוי prop חיצוני (rows), לא לולאת רינדור
+    setLastUpdated(new Date().toLocaleTimeString('he-IL'));
+    setRefreshing(false);
+  }, [rows]);
+
+  function handleRefresh() {
+    setRefreshing(true);
+    router.refresh();
+  }
 
   const allProducts = useMemo(
     () => rows.filter((r): r is GroupedProduct => r.row_type === 'product'),
@@ -78,22 +102,21 @@ function ShellInner({ rows }: { rows: ProductRow[] }) {
     <div className="min-h-screen bg-brand-bg">
       <header
         className="sticky top-0 z-50 px-5 pt-5 pb-4 shadow-lg"
-        style={{ background: 'linear-gradient(135deg, #1565C0 0%, #0842A0 100%)' }}
+        style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
       >
         <HeaderNav view={view} setView={setView} />
+        <Banner />
         {view === 'catalog' && (
-          <>
+          <div className="mt-4">
             <SearchBar value={query} onChange={setQuery} />
-            <p className="mt-2 text-center text-xs text-white/70">
-              {allProducts.length} מוצרים בקטלוג
-            </p>
-          </>
+          </div>
         )}
+        <HeaderStatusRow lastUpdated={lastUpdated} onRefresh={handleRefresh} refreshing={refreshing} />
       </header>
 
       {view === 'catalog' ? (
         <>
-          <main className="mx-auto max-w-6xl px-4 pb-16 md:pr-72">
+          <main className="mx-auto max-w-6xl px-4 pb-24 pt-2 md:pr-72">
             {visibleCategories.length === 0 ? (
               <div className="py-20 text-center text-brand-textsoft">
                 לא נמצאו רכיבים מתאימים לחיפוש 🙁
@@ -110,10 +133,16 @@ function ShellInner({ rows }: { rows: ProductRow[] }) {
         <CartView onBack={() => setView('catalog')} />
       )}
 
-      <footer className="pb-10 pt-6 text-center text-xs text-brand-textsoft/50">
-        <div>כל הזכויות שמורות. © 2026 MyElectronicLab</div>
-        <div className="mt-1 opacity-60">By Saar Cohen</div>
+      <footer className="pb-24 pt-6 text-center text-xs text-brand-textsoft">
+        <div className="opacity-60">כל הזכויות שמורות. © 2026 MyElectronicLab</div>
+        <div className="mt-1 opacity-30">By Saar Cohen</div>
       </footer>
+
+      <FabGroup
+        onOpenChat={() => setModal('chat')}
+        onOpenTicket={() => setModal('ticket')}
+        onOpenAbout={() => setModal('about')}
+      />
 
       {selected && (
         <ProductModal
@@ -123,14 +152,19 @@ function ShellInner({ rows }: { rows: ProductRow[] }) {
           onSelectProduct={setSelected}
         />
       )}
+      {modal === 'about' && <AboutModal onClose={() => setModal(null)} />}
+      {modal === 'ticket' && <TicketModal onClose={() => setModal(null)} />}
+      {modal === 'chat' && <ChatPanel onClose={() => setModal(null)} />}
     </div>
   );
 }
 
 export default function AppShell({ rows }: { rows: ProductRow[] }) {
   return (
-    <CartProvider>
-      <ShellInner rows={rows} />
-    </CartProvider>
+    <ThemeProvider>
+      <CartProvider>
+        <ShellInner rows={rows} />
+      </CartProvider>
+    </ThemeProvider>
   );
 }

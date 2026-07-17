@@ -1,24 +1,31 @@
 # MyElectronicLab — Web (Next.js)
 
-Frontend חדש שקורא ישירות מ-Supabase, כתחליף עתידי ל-`Index.html`
-הקיים ב-Google Apps Script. חלק מתוכנית ה-Scale-Up (שלב 1).
+Frontend חדש שקורא ישירות מ-Supabase. חלק מתוכנית ה-Scale-Up.
+זוהי גרסת **פריטי עיצוב מלא** - עיצוב ופיצ'רים תואמים 1:1 לאתר המקורי.
 
 ---
 
-## מה כבר עובד
+## מה כבר עובד (זהה לאתר המקורי)
 
-- ✅ קטלוג מלא — כרטיסי מוצר, קטגוריות, תת-קטגוריות
-- ✅ סרגל ניווט צדדי (קפיצה חלקה לקטגוריה)
-- ✅ חיפוש חי (שם / דגם / מילות מפתח / התאמת קטגוריה שלמה)
-- ✅ מודל מוצר מורחב — תיאור, מוצרים קשורים, מזהה לדיבאגינג
-- ✅ עגלת קניות (localStorage, נשמרת בין ביקורים)
-- ✅ הוספה לעגלה עם אנימציית ✓ ירוקה
-- ✅ "רכישת כל המוצרים בעגלה" — פותח כל קישור בכרטיסייה נפרדת
-- ✅ עיצוב מותג (כחול-ציאן, גרדיאנט header, RTL מלא)
-- ✅ טעינה מותאמת (loading.tsx), favicon תואם לאתר המקורי
+- ✅ קטלוג מלא — כרטיסים, קטגוריות, תת-קטגוריות, חיפוש חי
+- ✅ סרגל ניווט צדדי + מודל מוצר מורחב + מוצרים קשורים
+- ✅ עגלת קניות (localStorage) + "רכישת הכל"
+- ✅ **מצב כהה/בהיר** — כפתור החלפה, פלטת צבעים זהה למקור, ללא הבהוב בטעינה
+- ✅ **באנר** — אותה תמונה בדיוק, גדלים רספונסיביים
+- ✅ **אייקוני Iconify** — solar:*, majesticons:open-line, mdi:robot — לא אימוג'ים
+- ✅ **כפתורי FAB** — צ'אט / פנייה / אודות, עם התנהגות מובייל דו-לחיצה זהה למקור
+- ✅ **מודל "קצת עלינו"** — טקסט מדויק מהאתר המקורי
+- ✅ **טופס פנייה** — UI מלא (שלח = placeholder, ממתין לחיבור Backend)
+- ✅ **פאנל צ'אט AI** — UI מלא (תשובות = placeholder, ממתין לחיבור Backend)
+- ✅ כפתור רענון + חותמת "עודכן לאחרונה"
+- ✅ פוטר מדויק ("כל הזכויות שמורות. © 2026 MyElectronicLab" + "By Saar Cohen")
 
-## מה עדיין חסר (שלבים הבאים)
-- AI Agent, טופס פנייה, פאנל אדמין — דורשים Backend (API Routes)
+## מה עדיין דורש Backend (שלב 2)
+- חיבור אמיתי של טופס הפנייה ל-Supabase (כרגע UI בלבד)
+- חיבור אמיתי של הצ'אט ל-OpenAI + Tool Calling (כרגע UI בלבד)
+- פאנל אדמין
+
+## מה עדיין לא קיים (שלבים מאוחרים יותר)
 - Subpages אמיתיים (`/product/[id]`, `/category/[slug]`)
 - מדריכים/הסברים, צ'אט קהילתי
 
@@ -26,22 +33,18 @@ Frontend חדש שקורא ישירות מ-Supabase, כתחליף עתידי ל-
 
 ## פריסה ל-Vercel
 
-### 1. Push ל-GitHub
 ```bash
 git add .
-git commit -m "Step 1: cart, product modal, related products, design polish"
+git commit -m "Full design parity: theme, icons, FAB, banner, modals"
 git push
 ```
 
-### 2. Environment Variables (אם עוד לא הוגדרו)
-ב-Vercel → Project Settings → Environment Variables:
+Environment Variables (אם עוד לא הוגדרו) ב-Vercel → Settings:
 
 | Key | Value |
 |-----|-------|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://viqmlpipgzrfulbauotv.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | מפתח ה-Publishable שלך |
-
-Vercel יפרוס אוטומטית בכל push.
 
 ---
 
@@ -54,28 +57,28 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-פתח [http://localhost:3000](http://localhost:3000)
-
 ---
 
 ## מבנה הפרויקט
 
 ```
 app/
-  layout.tsx        — Root layout (RTL, favicon, metadata)
-  loading.tsx        — מסך טעינה ממותג
-  page.tsx           — Server Component - שולף נתונים מ-Supabase
+  layout.tsx          — RTL, favicon, סקריפט מניעת הבהוב theme
+  loading.tsx          — מסך טעינה ממותג
+  page.tsx              — Server Component - שולף מ-Supabase
 components/
-  AppShell.tsx        — ה-state הראשי: view switching, חיפוש, מודל
-  ProductCard.tsx      — כרטיס מוצר + הוספה מהירה לעגלה
-  ProductModal.tsx     — תצוגה מורחבת + מוצרים קשורים
-  CategorySection.tsx  — קטגוריה + תת-קטגוריות + גריד
-  Sidebar.tsx          — ניווט צדדי
-  SearchBar.tsx         — שדה חיפוש
-  CartView.tsx          — עמוד עגלה
+  AppShell.tsx           — state מרכזי: view, חיפוש, מודלים, theme+cart providers
+  Banner.tsx              — תמונת הבאנר
+  HeaderStatusRow.tsx      — רענון + theme toggle + עודכן לאחרונה
+  FabGroup.tsx              — צ'אט / פנייה / אודות (עם לוגיקת מובייל)
+  AboutModal.tsx             — "קצת עלינו"
+  TicketModal.tsx             — טופס פנייה (UI, ממתין ל-Backend)
+  ChatPanel.tsx                — צ'אט AI (UI, ממתין ל-Backend)
+  ProductCard.tsx / ProductModal.tsx / CategorySection.tsx / Sidebar.tsx / SearchBar.tsx / CartView.tsx
 lib/
-  supabase.ts           — Supabase client (Publishable key בלבד)
-  cloudinary.ts          — טרנספורמציית תמונות
-  catalog.ts             — קיבוץ שורות שטוחות לקטגוריות/תת-קטגוריות + חיפוש
-  cart-context.tsx        — React Context לעגלה (localStorage)
+  supabase.ts             — Supabase client (Publishable key)
+  cloudinary.ts             — טרנספורמציית תמונות
+  catalog.ts                 — קיבוץ + חיפוש
+  cart-context.tsx             — עגלה (React Context + localStorage)
+  theme-context.tsx             — מצב כהה/בהיר (React Context + localStorage)
 ```

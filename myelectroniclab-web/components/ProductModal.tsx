@@ -1,11 +1,11 @@
-// Version: 1.0
-// Title: Product Modal | Important Data: resolves related_ids (comma-separated) by
-// looking up matching products in allProducts array - same pattern as related items
-// in the original Index.html modal.
+// Version: 2.0
+// Title: Product Modal | Important Data: Iconify icons (majesticons:open-line for
+// buy, solar:link-bold for related), dark-mode aware background.
 
 'use client';
 
 import { useState } from 'react';
+import { Icon } from '@iconify/react';
 import { GroupedProduct } from '@/lib/catalog';
 import { cloudinaryTransform } from '@/lib/cloudinary';
 import { useCart } from '@/lib/cart-context';
@@ -52,7 +52,7 @@ export default function ProductModal({
       onClick={onClose}
     >
       <div
-        className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl"
+        className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-brand-cardbg shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative flex aspect-square items-center justify-center bg-brand-picture">
@@ -64,13 +64,9 @@ export default function ProductModal({
           </button>
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={img}
-              alt={product.name ?? ''}
-              className="h-full w-full object-contain"
-            />
+            <img src={img} alt={product.name ?? ''} className="h-full w-full object-contain" />
           ) : (
-            <span className="text-5xl opacity-40">📦</span>
+            <Icon icon="solar:gallery-broken-bold" width={48} className="opacity-30" />
           )}
         </div>
 
@@ -108,23 +104,26 @@ export default function ProductModal({
                 href={product.link}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
-                className="flex-1 rounded-xl bg-brand-link py-2.5 text-center text-sm font-bold text-brand-text hover:brightness-95"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-link py-2.5 text-sm font-bold text-brand-text hover:brightness-95"
               >
-                לקנייה ↗
+                <Icon icon="majesticons:open-line" width={16} />
+                לקנייה
               </a>
             )}
             <button
               onClick={handleAddToCart}
-              className="flex-1 rounded-xl bg-brand-name py-2.5 text-sm font-bold text-brand-text transition hover:brightness-95"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-name py-2.5 text-sm font-bold text-brand-text transition hover:brightness-95"
             >
-              {added ? '✓ נוסף!' : '🛒 הוסף לעגלה'}
+              <Icon icon={added ? 'solar:check-circle-bold' : 'solar:cart-plus-bold'} width={16} />
+              {added ? 'נוסף!' : 'הוסף לעגלה'}
             </button>
           </div>
 
           {relatedProducts.length > 0 && (
             <div className="mt-3 border-t border-brand-category pt-3">
-              <div className="mb-2 text-xs font-bold text-brand-textsoft">
-                🔗 מוצרים קשורים
+              <div className="mb-2 flex items-center gap-1 text-xs font-bold text-brand-textsoft">
+                <Icon icon="solar:link-bold" width={14} />
+                מוצרים קשורים
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {relatedProducts.map((rp) => {
@@ -145,7 +144,7 @@ export default function ProductModal({
                             loading="lazy"
                           />
                         ) : (
-                          <span className="text-lg opacity-40">📦</span>
+                          <Icon icon="solar:box-bold" width={18} className="opacity-30" />
                         )}
                       </div>
                       <div className="truncate p-1.5 text-[11px] font-semibold text-brand-text">
