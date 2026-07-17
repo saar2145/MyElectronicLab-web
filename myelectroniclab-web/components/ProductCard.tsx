@@ -1,15 +1,52 @@
-// Version: 1.0
-// Title: Product Card | Important Data: matches Index.html card design -
-// image (Cloudinary w_500), name badge, model badge, price badge, buy link.
+// Version: 2.0
+// Title: Product Card | Important Data: clickable (opens ProductModal), quick
+// "add to cart" button with green flash animation - matches original site's
+// flash-added CSS effect (green overlay + checkmark, ~1.5s).
 
+'use client';
+
+import { useState } from 'react';
 import { GroupedProduct } from '@/lib/catalog';
 import { cloudinaryTransform } from '@/lib/cloudinary';
+import { useCart } from '@/lib/cart-context';
 
-export default function ProductCard({ product }: { product: GroupedProduct }) {
+export default function ProductCard({
+  product,
+  onOpen,
+}: {
+  product: GroupedProduct;
+  onOpen: (p: GroupedProduct) => void;
+}) {
+  const { addItem } = useCart();
+  const [flash, setFlash] = useState(false);
+
   const img = cloudinaryTransform(product.image_url, 'f_auto,q_auto,w_500');
 
+  function handleAdd(e: React.MouseEvent) {
+    e.stopPropagation();
+    addItem({
+      id: product.id,
+      name: product.name ?? '',
+      model: product.model,
+      price: product.price,
+      image_url: product.image_url,
+      link: product.link,
+    });
+    setFlash(true);
+    setTimeout(() => setFlash(false), 1200);
+  }
+
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+    <div
+      onClick={() => onOpen(product)}
+      className="relative flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg hover:ring-brand-link"
+    >
+      {flash && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-green-500/60 bg-green-500/15">
+          <span className="text-4xl font-black text-green-600">✓</span>
+        </div>
+      )}
+
       <div className="flex aspect-square items-center justify-center overflow-hidden bg-brand-picture">
         {img ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -41,16 +78,12 @@ export default function ProductCard({ product }: { product: GroupedProduct }) {
               ₪{product.price}
             </span>
           )}
-          {product.link && (
-            <a
-              href={product.link}
-              target="_blank"
-              rel="noopener noreferrer sponsored"
-              className="rounded-lg bg-brand-link px-3 py-1.5 text-xs font-bold text-brand-text transition hover:brightness-95"
-            >
-              לקנייה ↗
-            </a>
-          )}
+          <button
+            onClick={handleAdd}
+            className="rounded-lg bg-brand-link px-3 py-1.5 text-xs font-bold text-brand-text transition hover:brightness-95"
+          >
+            🛒 הוסף
+          </button>
         </div>
       </div>
     </div>

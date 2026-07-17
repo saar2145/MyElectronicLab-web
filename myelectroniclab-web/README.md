@@ -1,48 +1,51 @@
 # MyElectronicLab — Web (Next.js)
 
-שלב 0 בתוכנית ה-Scale-Up: Frontend חדש שקורא ישירות מ-Supabase,
-כתחליף עתידי ל-`Index.html` הקיים ב-Google Apps Script.
-
-כרגע זה עמוד בדיקה בסיסי בלבד ("Hello World") — מציג את הקטלוג
-האמיתי שנשלף מ-Supabase, כדי לוודא שכל השרשרת עובדת מקצה לקצה
-לפני שבונים את שאר הפיצ'רים (עגלה, חיפוש, מודל מוצר, AI Agent וכו').
+Frontend חדש שקורא ישירות מ-Supabase, כתחליף עתידי ל-`Index.html`
+הקיים ב-Google Apps Script. חלק מתוכנית ה-Scale-Up (שלב 1).
 
 ---
 
-## פריסה ל-Vercel (שלב-אחר-שלב)
+## מה כבר עובד
+
+- ✅ קטלוג מלא — כרטיסי מוצר, קטגוריות, תת-קטגוריות
+- ✅ סרגל ניווט צדדי (קפיצה חלקה לקטגוריה)
+- ✅ חיפוש חי (שם / דגם / מילות מפתח / התאמת קטגוריה שלמה)
+- ✅ מודל מוצר מורחב — תיאור, מוצרים קשורים, מזהה לדיבאגינג
+- ✅ עגלת קניות (localStorage, נשמרת בין ביקורים)
+- ✅ הוספה לעגלה עם אנימציית ✓ ירוקה
+- ✅ "רכישת כל המוצרים בעגלה" — פותח כל קישור בכרטיסייה נפרדת
+- ✅ עיצוב מותג (כחול-ציאן, גרדיאנט header, RTL מלא)
+- ✅ טעינה מותאמת (loading.tsx), favicon תואם לאתר המקורי
+
+## מה עדיין חסר (שלבים הבאים)
+- AI Agent, טופס פנייה, פאנל אדמין — דורשים Backend (API Routes)
+- Subpages אמיתיים (`/product/[id]`, `/category/[slug]`)
+- מדריכים/הסברים, צ'אט קהילתי
+
+---
+
+## פריסה ל-Vercel
 
 ### 1. Push ל-GitHub
 ```bash
-git init
 git add .
-git commit -m "Initial Next.js scaffold - Step 0"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/myelectroniclab-web.git
-git push -u origin main
+git commit -m "Step 1: cart, product modal, related products, design polish"
+git push
 ```
 
-### 2. חיבור ל-Vercel
-1. גש ל-[vercel.com](https://vercel.com) → **Add New** → **Project**
-2. בחר את ה-repo `myelectroniclab-web`
-3. Framework Preset: **Next.js** (מזוהה אוטומטית)
-4. **לפני שלוחצים Deploy** — לחץ **Environment Variables** והוסף:
+### 2. Environment Variables (אם עוד לא הוגדרו)
+ב-Vercel → Project Settings → Environment Variables:
 
 | Key | Value |
 |-----|-------|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://viqmlpipgzrfulbauotv.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | (מפתח ה-Publishable שלך, `sb_publishable_...`) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | מפתח ה-Publishable שלך |
 
-⚠️ **חשוב:** להשתמש רק במפתח **Publishable** — לעולם לא ה-Secret key כאן (זה קוד שרץ בדפדפן).
-
-5. לחץ **Deploy**
-
-### 3. בדיקה
-אחרי כ-דקה, Vercel ייתן לך כתובת כמו `myelectroniclab-web.vercel.app`.
-תיכנס ותראה את המוצרים האמיתיים מהקטלוג שלך — זו ההוכחה ש-Next.js → Supabase עובד.
+Vercel יפרוס אוטומטית בכל push.
 
 ---
 
-## פיתוח מקומי (אופציונלי)
+## פיתוח מקומי
 
 ```bash
 npm install
@@ -59,16 +62,20 @@ npm run dev
 
 ```
 app/
-  layout.tsx       — Root layout (RTL, פונטים)
-  page.tsx         — עמוד הקטלוג (Server Component, קורא מ-Supabase)
-  globals.css       — Tailwind + עיצוב בסיסי
+  layout.tsx        — Root layout (RTL, favicon, metadata)
+  loading.tsx        — מסך טעינה ממותג
+  page.tsx           — Server Component - שולף נתונים מ-Supabase
+components/
+  AppShell.tsx        — ה-state הראשי: view switching, חיפוש, מודל
+  ProductCard.tsx      — כרטיס מוצר + הוספה מהירה לעגלה
+  ProductModal.tsx     — תצוגה מורחבת + מוצרים קשורים
+  CategorySection.tsx  — קטגוריה + תת-קטגוריות + גריד
+  Sidebar.tsx          — ניווט צדדי
+  SearchBar.tsx         — שדה חיפוש
+  CartView.tsx          — עמוד עגלה
 lib/
-  supabase.ts       — Supabase client (Publishable key בלבד, בטוח לדפדפן)
+  supabase.ts           — Supabase client (Publishable key בלבד)
+  cloudinary.ts          — טרנספורמציית תמונות
+  catalog.ts             — קיבוץ שורות שטוחות לקטגוריות/תת-קטגוריות + חיפוש
+  cart-context.tsx        — React Context לעגלה (localStorage)
 ```
-
-## מה הלאה (שלב 1)
-- בניית כרטיסי מוצר מלאים (תמונה, מודל, קישור לרכישה)
-- עגלת קניות
-- חיפוש וסינון קטגוריות
-- מודל מוצר מורחב + מוצרים קשורים
-- Subpages אמיתיים (`/product/[id]`, `/category/[slug]`)

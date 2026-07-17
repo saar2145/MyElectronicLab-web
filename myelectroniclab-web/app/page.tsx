@@ -1,10 +1,10 @@
-// Version: 2.0
+// Version: 3.0
 // Title: Catalog Home Page | Important Data: Server Component - fetches all rows
-// from Supabase once per request, hands off to CatalogView (Client Component) for
-// search interactivity. This is Step 1: full catalog parity with the original site.
+// from Supabase once per request, hands off to AppShell (Client Component) which
+// manages view switching (catalog/cart), search, and the product modal.
 
 import { supabase, ProductRow } from '@/lib/supabase';
-import CatalogView from '@/components/CatalogView';
+import AppShell from '@/components/AppShell';
 
 async function getProducts(): Promise<ProductRow[]> {
   const { data, error } = await supabase
@@ -36,7 +36,7 @@ export default async function Home() {
     );
   }
 
-  return <CatalogView rows={rows} />;
+  return <AppShell rows={rows} />;
 }
 
 // רענון הנתונים בכל בקשה (מתאים לשלב הבדיקה; נשדרג ל-ISR/cache בהמשך)
