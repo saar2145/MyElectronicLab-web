@@ -8,6 +8,17 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* פלטת המותג - זהה לאתר המקורי (Index.html v3.6) */
+  --color-brand-name: #bdd8ff;
+  --color-brand-model: #b4edf5;
+  --color-brand-link: #b8ccee;
+  --color-brand-picture: #d2ebff;
+  --color-brand-price: #ffd4a8;
+  --color-brand-category: #bdd0e5;
+  --color-brand-bg: #ecf2ff;
+  --color-brand-text: #091e3a;
+  --color-brand-textsoft: #4e6e92;
 }
 
 @media (prefers-color-scheme: dark) {
