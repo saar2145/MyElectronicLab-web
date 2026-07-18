@@ -28,22 +28,22 @@ import ChatPanel from './ChatPanel';
 function HeaderNav({ setView }: { setView: (v: 'catalog' | 'cart') => void }) {
   const { totalCount } = useCart();
   const btnClass =
-    'flex shrink-0 items-center gap-1.5 rounded-full bg-brand-cardbg px-3 py-2 text-sm font-bold text-brand-text shadow-md transition hover:brightness-95 sm:px-4';
+    'flex shrink-0 items-center gap-2 rounded-full bg-brand-cardbg px-4 py-3 text-base font-bold text-brand-text shadow-md transition hover:brightness-95 sm:px-6 sm:text-lg';
 
   return (
-    <div className="mb-2 flex items-center justify-between gap-2">
+    <div className="mb-1 flex items-center justify-between gap-2">
       <button onClick={() => setView('catalog')} className={btnClass}>
-        <Icon icon="solar:book-2-bold" width={17} />
-        <span className="hidden sm:inline">קטלוג</span>
+        <Icon icon="solar:book-2-bold" width={22} />
+        <span>קטלוג</span>
       </button>
 
       <div className="min-w-0 flex-1" />
 
       <button onClick={() => setView('cart')} className={`relative ${btnClass}`}>
-        <Icon icon="solar:cart-large-minimalistic-bold" width={17} />
-        <span className="hidden sm:inline">עגלה</span>
+        <Icon icon="solar:cart-large-minimalistic-bold" width={22} />
+        <span>עגלה</span>
         {totalCount > 0 && (
-          <span className="absolute -top-1.5 -left-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+          <span className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
             {totalCount}
           </span>
         )}

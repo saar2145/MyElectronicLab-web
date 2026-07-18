@@ -1,8 +1,7 @@
-// Version: 1.1
-// Title: Site Banner | Important Data: reduced sizing (260px desktop, 150px mobile)
-// vs v1.0's 380/180 - header was taking up too much vertical space. block display
-// (not inline default) removes the small baseline gap that <img> has by default,
-// which was causing an odd-looking space above/below the banner.
+// Version: 1.2
+// Title: Site Banner | Important Data: slightly increased sizing (300px desktop,
+// 160px mobile) per user request - v1.1's 260/140 felt too small once nav buttons
+// were also enlarged. Still block display to avoid inline baseline gap.
 
 export default function Banner() {
   return (
@@ -10,7 +9,7 @@ export default function Banner() {
     <img
       src="https://lh3.googleusercontent.com/d/1-a1wyruaEH7ijcTd3_po5WJuHF64IMZ5"
       alt="MyElectronicLab"
-      className="mx-auto block h-auto w-[140px] sm:w-[200px] md:w-[260px]"
+      className="mx-auto block h-auto w-[160px] sm:w-[220px] md:w-[300px]"
     />
   );
 }
