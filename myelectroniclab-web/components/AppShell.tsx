@@ -31,7 +31,7 @@ function HeaderNav({ setView }: { setView: (v: 'catalog' | 'cart') => void }) {
     'flex shrink-0 items-center gap-2 rounded-full bg-brand-cardbg px-4 py-3 text-base font-bold text-brand-text shadow-md transition hover:brightness-95 sm:px-6 sm:text-lg';
 
   return (
-    <div className="mb-1 flex items-center justify-between gap-2">
+    <div className="flex items-center justify-between gap-2">
       <button onClick={() => setView('catalog')} className={btnClass}>
         <Icon icon="solar:book-2-bold" width={22} />
         <span>קטלוג</span>
@@ -87,16 +87,12 @@ function ShellInner({ rows }: { rows: ProductRow[] }) {
   return (
     <div className="min-h-screen bg-brand-bg">
       <header
-        className="sticky top-0 z-50 px-3 pt-3 pb-2.5 shadow-lg"
+        className="isolate sticky top-0 z-50 box-border flex flex-col gap-2 overflow-visible px-3 pt-3 pb-2.5 shadow-lg"
         style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
       >
         <HeaderNav setView={setView} />
         <Banner />
-        {view === 'catalog' && (
-          <div className="mt-2">
-            <SearchBar value={query} onChange={setQuery} />
-          </div>
-        )}
+        {view === 'catalog' && <SearchBar value={query} onChange={setQuery} />}
         <HeaderStatusRow lastUpdated={lastUpdated} onRefresh={handleRefresh} refreshing={refreshing} />
       </header>
 
