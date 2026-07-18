@@ -1,44 +1,61 @@
-// Version: 1.0
-// Title: Chat Panel | Important Data: full UI matching original site's AI Agent
-// chat (bubbles, typing indicator, input). Responses are placeholders until
-// Step 2 - TODO: wire to /api/chat route calling OpenAI with tool-calling.
+// Version: 2.0
+// Title: Chat Panel | Important Data: wired to real /api/chat route (OpenAI +
+// tool calling against Supabase). Maintains conversation history in the
+// {role, content} shape expected by the API, mirroring the original site's
+// chatHistory array.
 
 'use client';
 
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
 
-type Message = { role: 'user' | 'agent'; text: string };
+type Message = { role: 'user' | 'assistant'; content: string };
 
 export default function ChatPanel({ onClose }: { onClose: () => void }) {
   const [messages, setMessages] = useState<Message[]>([
     {
-      role: 'agent',
-      text: 'שלום! אני כאן לעזור לך למצוא את הרכיב המתאים לפרויקט שלך 😊\nהשירות עדיין בפיתוח - בקרוב אוכל לחפש עבורך מוצרים אמיתיים!',
+      role: 'assistant',
+      content: 'שלום! אני כאן לעזור לך למצוא את הרכיב המתאים לפרויקט שלך 😊\nשאל אותי על כל מוצר, מפרט טכני, או פרוטוקול תקשורת.',
     },
   ]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
 
-  function send() {
+  async function send() {
     const text = input.trim();
-    if (!text) return;
-    setMessages((prev) => [...prev, { role: 'user', text }]);
+    if (!text || typing) return;
+
+    const userMsg: Message = { role: 'user', content: text };
+    const historyForApi = messages.slice(-10); // ללא ההודעה הנוכחית
+
+    setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setTyping(true);
 
-    // TODO Step 2: להחליף בקריאה אמיתית ל-/api/chat (OpenAI + tool calling)
-    setTimeout(() => {
-      setTyping(false);
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, history: historyForApi }),
+      });
+      const json = await res.json();
+
       setMessages((prev) => [
         ...prev,
-        { role: 'agent', text: 'שירות הצ׳אט החכם יחובר בשלב הבא בפיתוח (Step 2). תודה על הסבלנות!' },
+        { role: 'assistant', content: json.reply ?? json.error ?? 'מצטער, אירעה שגיאה.' },
       ]);
-    }, 900);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: 'שגיאת רשת. בדוק חיבור ונסה שוב.' },
+      ]);
+    } finally {
+      setTyping(false);
+    }
   }
 
   return (
-    <div className="fixed inset-x-4 bottom-24 z-[65] mx-auto flex h-[70vh] max-h-[500px] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-brand-cardbg shadow-2xl sm:inset-x-auto sm:right-6">
+    <div className="fixed inset-x-4 bottom-24 z-[65] mx-auto flex h-[70vh] max-h-[500px] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-brand-cardbg shadow-2xl sm:inset-x-auto sm:left-6">
       <div
         className="flex items-center justify-between px-4 py-3.5"
         style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
@@ -67,7 +84,7 @@ export default function ChatPanel({ onClose }: { onClose: () => void }) {
                 : 'self-start rounded-bl-sm bg-brand-bg text-brand-text'
             }`}
           >
-            {m.text}
+            {m.content}
           </div>
         ))}
         {typing && (
@@ -95,7 +112,8 @@ export default function ChatPanel({ onClose }: { onClose: () => void }) {
         />
         <button
           onClick={send}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white"
+          disabled={typing}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-50"
           style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
         >
           <Icon icon="solar:plain-2-bold" width={16} />

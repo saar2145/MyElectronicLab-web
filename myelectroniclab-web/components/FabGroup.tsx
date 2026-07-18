@@ -70,7 +70,7 @@ export default function FabGroup({
   ];
 
   return (
-    <div ref={groupRef} className="fixed bottom-4 left-4 z-50 flex flex-col items-start gap-2.5">
+    <div ref={groupRef} className="fixed bottom-4 left-4 z-50 flex flex-col items-stretch gap-2.5">
       {buttons.map((btn) => (
         <button
           key={btn.label}

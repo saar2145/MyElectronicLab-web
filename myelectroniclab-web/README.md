@@ -1,50 +1,53 @@
 # MyElectronicLab — Web (Next.js)
 
-Frontend חדש שקורא ישירות מ-Supabase. חלק מתוכנית ה-Scale-Up.
-זוהי גרסת **פריטי עיצוב מלא** - עיצוב ופיצ'רים תואמים 1:1 לאתר המקורי.
+Frontend + Backend מלאים, קוראים/כותבים ישירות ל-Supabase.
+זוהי הגרסה עם **Backend אמיתי** - טופס הפנייה, הצ'אט, ופאנל האדמין פונקציונליים.
 
 ---
 
-## מה כבר עובד (זהה לאתר המקורי)
+## מה עובד (זהה פונקציונלית לאתר המקורי)
 
-- ✅ קטלוג מלא — כרטיסים, קטגוריות, תת-קטגוריות, חיפוש חי
-- ✅ סרגל ניווט צדדי + מודל מוצר מורחב + מוצרים קשורים
-- ✅ עגלת קניות (localStorage) + "רכישת הכל"
-- ✅ **מצב כהה/בהיר** — כפתור החלפה, פלטת צבעים זהה למקור, ללא הבהוב בטעינה
-- ✅ **באנר** — אותה תמונה בדיוק, גדלים רספונסיביים
-- ✅ **אייקוני Iconify** — solar:*, majesticons:open-line, mdi:robot — לא אימוג'ים
-- ✅ **כפתורי FAB** — צ'אט / פנייה / אודות, עם התנהגות מובייל דו-לחיצה זהה למקור
-- ✅ **מודל "קצת עלינו"** — טקסט מדויק מהאתר המקורי
-- ✅ **טופס פנייה** — UI מלא (שלח = placeholder, ממתין לחיבור Backend)
-- ✅ **פאנל צ'אט AI** — UI מלא (תשובות = placeholder, ממתין לחיבור Backend)
-- ✅ כפתור רענון + חותמת "עודכן לאחרונה"
-- ✅ פוטר מדויק ("כל הזכויות שמורות. © 2026 MyElectronicLab" + "By Saar Cohen")
+- ✅ קטלוג, קטגוריות, חיפוש, עגלה, מודל מוצר, מוצרים קשורים
+- ✅ מצב כהה/בהיר, באנר, אייקוני Iconify, FAB group (גדלים אחידים, נפתח בצד שמאל)
+- ✅ **טופס פנייה אמיתי** — כותב ל-Supabase (`/api/tickets`)
+- ✅ **צ'אט AI אמיתי** — OpenAI + Tool Calling מול הקטלוג ורעיונות פרויקטים (`/api/chat`), כולל לוג שיחות
+- ✅ **פאנל אדמין** — `/admin`, מוגן בסיסמה (SHA-256 hash + session חתום), ניהול פניות
 
-## מה עדיין דורש Backend (שלב 2)
-- חיבור אמיתי של טופס הפנייה ל-Supabase (כרגע UI בלבד)
-- חיבור אמיתי של הצ'אט ל-OpenAI + Tool Calling (כרגע UI בלבד)
-- פאנל אדמין
-
-## מה עדיין לא קיים (שלבים מאוחרים יותר)
-- Subpages אמיתיים (`/product/[id]`, `/category/[slug]`)
-- מדריכים/הסברים, צ'אט קהילתי
+## מה עדיין לא כלול (בכוונה, לפי החלטה)
+- Subpages, מדריכים, צ'אט קהילתי — שלבים עתידיים
+- Rate limiting אמיתי (Upstash) — כרגע רק הגבלת אורך קלט
+- נעילת אדמין אחרי ניסיונות כושלים — לא מיושם עדיין
 
 ---
 
-## פריסה ל-Vercel
+## הגדרת Environment Variables ב-Vercel (חובה!)
+
+לך ל-Vercel → Project → Settings → Environment Variables והוסף:
+
+| Key | איך משיגים |
+|-----|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → API (כבר קיים מהשלב הקודם) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase → Settings → API Keys (כבר קיים) |
+| `SUPABASE_SECRET_KEY` | Supabase → Settings → API Keys → **`sb_secret_...`** (החדש, לא ה-Legacy!) |
+| `OPENAI_API_KEY` | platform.openai.com/api-keys |
+| `ADMIN_PASSWORD_HASH` | הרץ מקומית: `node -e "console.log(require('crypto').createHash('sha256').update('הסיסמה שלך').digest('hex'))"` והדבק את הפלט |
+| `ADMIN_SESSION_SECRET` | כל מחרוזת אקראית ארוכה (למשל תיצור עם `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`) |
+
+⚠️ **חשוב:** `SUPABASE_SECRET_KEY` הוא ה-Secret **החדש** (`sb_secret_...`), **לא** ה-Legacy `service_role` ששימש את Google Apps Script. ב-Vercel אין את המגבלה שהייתה ב-GAS (User-Agent), אז המפתח החדש עובד ישירות.
+
+**כל המשתנים האלה חייבים להיות ללא `NEXT_PUBLIC_` (מלבד השניים הראשונים)** - כך שהם לעולם לא ייחשפו לדפדפן.
+
+אחרי הוספת המשתנים - **חובה Redeploy** (Vercel לא מיישם משתני סביבה חדשים על deployment קיים).
+
+---
+
+## Push ל-GitHub
 
 ```bash
 git add .
-git commit -m "Full design parity: theme, icons, FAB, banner, modals"
+git commit -m "Real backend: tickets API, chat AI, admin panel"
 git push
 ```
-
-Environment Variables (אם עוד לא הוגדרו) ב-Vercel → Settings:
-
-| Key | Value |
-|-----|-------|
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://viqmlpipgzrfulbauotv.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | מפתח ה-Publishable שלך |
 
 ---
 
@@ -53,32 +56,25 @@ Environment Variables (אם עוד לא הוגדרו) ב-Vercel → Settings:
 ```bash
 npm install
 cp .env.local.example .env.local
-# ערוך את .env.local עם המפתחות האמיתיים
+# ערוך את .env.local עם כל המפתחות האמיתיים
 npm run dev
 ```
 
 ---
 
-## מבנה הפרויקט
+## מבנה הפרויקט (עדכני)
 
 ```
 app/
-  layout.tsx          — RTL, favicon, סקריפט מניעת הבהוב theme
-  loading.tsx          — מסך טעינה ממותג
-  page.tsx              — Server Component - שולף מ-Supabase
-components/
-  AppShell.tsx           — state מרכזי: view, חיפוש, מודלים, theme+cart providers
-  Banner.tsx              — תמונת הבאנר
-  HeaderStatusRow.tsx      — רענון + theme toggle + עודכן לאחרונה
-  FabGroup.tsx              — צ'אט / פנייה / אודות (עם לוגיקת מובייל)
-  AboutModal.tsx             — "קצת עלינו"
-  TicketModal.tsx             — טופס פנייה (UI, ממתין ל-Backend)
-  ChatPanel.tsx                — צ'אט AI (UI, ממתין ל-Backend)
-  ProductCard.tsx / ProductModal.tsx / CategorySection.tsx / Sidebar.tsx / SearchBar.tsx / CartView.tsx
+  admin/page.tsx               — פאנל אדמין (login + ניהול פניות)
+  api/tickets/route.ts           — POST - כתיבת פנייה חדשה
+  api/chat/route.ts               — POST - צ'אט AI (OpenAI + Tool Calling)
+  api/admin/login/route.ts         — POST - כניסת אדמין
+  api/admin/tickets/route.ts        — GET/PATCH - ניהול פניות (מוגן)
 lib/
-  supabase.ts             — Supabase client (Publishable key)
-  cloudinary.ts             — טרנספורמציית תמונות
-  catalog.ts                 — קיבוץ + חיפוש
-  cart-context.tsx             — עגלה (React Context + localStorage)
-  theme-context.tsx             — מצב כהה/בהיר (React Context + localStorage)
+  supabase-server.ts              — Supabase client עם Secret key (שרת בלבד!)
+  admin-auth.ts                    — אימות אדמין (hash + session חתום)
+  chat-tools-products.ts            — כלי חיפוש מוצרים לצ'אט
+  chat-tools-project-examples.ts     — כלי רעיונות פרויקטים + מניעת חזרות
+  (כל שאר lib/ ו-components/ מהשלב הקודם - ללא שינוי)
 ```

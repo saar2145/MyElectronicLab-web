@@ -1,7 +1,6 @@
-// Version: 1.0
-// Title: Ticket Modal | Important Data: full form UI matching original site
-// (name, subject dropdown, description, contact). Submit currently shows a
-// "coming soon" message - TODO Step 2: wire to /api/tickets route + Supabase.
+// Version: 2.0
+// Title: Ticket Modal | Important Data: submits to real /api/tickets route
+// (writes to Supabase). Auto-closes 2s after successful submission.
 
 'use client';
 
@@ -18,7 +17,7 @@ export default function TicketModal({ onClose }: { onClose: () => void }) {
   );
   const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!subject) {
       setStatus({ type: 'error', msg: 'יש לבחור נושא לפנייה.' });
       return;
@@ -31,14 +30,26 @@ export default function TicketModal({ onClose }: { onClose: () => void }) {
     setSubmitting(true);
     setStatus(null);
 
-    // TODO Step 2: להחליף בקריאה אמיתית ל-API route שכותב ל-Supabase
-    setTimeout(() => {
-      setSubmitting(false);
-      setStatus({
-        type: 'info',
-        msg: 'שירות שליחת הפניות יחובר בקרוב (שלב הבא בפיתוח). בינתיים אפשר לפנות ישירות.',
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName, subject, description, contact }),
       });
-    }, 600);
+      const json = await res.json();
+
+      if (!res.ok) {
+        setStatus({ type: 'error', msg: json.error || 'שגיאה בשליחה. נסה שוב.' });
+        setSubmitting(false);
+        return;
+      }
+
+      setStatus({ type: 'success', msg: 'הפנייה נשלחה בהצלחה! תודה רבה.' });
+      setTimeout(onClose, 2000);
+    } catch {
+      setStatus({ type: 'error', msg: 'שגיאת רשת. בדוק חיבור ונסה שוב.' });
+      setSubmitting(false);
+    }
   }
 
   return (
