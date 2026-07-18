@@ -1,6 +1,8 @@
-// Version: 1.0
-// Title: Site Banner | Important Data: same banner image + sizing (380px desktop,
-// 180px mobile) as original Index.html header.
+// Version: 1.1
+// Title: Site Banner | Important Data: reduced sizing (260px desktop, 150px mobile)
+// vs v1.0's 380/180 - header was taking up too much vertical space. block display
+// (not inline default) removes the small baseline gap that <img> has by default,
+// which was causing an odd-looking space above/below the banner.
 
 export default function Banner() {
   return (
@@ -8,7 +10,7 @@ export default function Banner() {
     <img
       src="https://lh3.googleusercontent.com/d/1-a1wyruaEH7ijcTd3_po5WJuHF64IMZ5"
       alt="MyElectronicLab"
-      className="mx-auto h-auto w-[180px] sm:w-[280px] md:w-[380px]"
+      className="mx-auto block h-auto w-[140px] sm:w-[200px] md:w-[260px]"
     />
   );
 }

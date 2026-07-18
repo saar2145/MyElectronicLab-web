@@ -25,35 +25,21 @@ import AboutModal from './AboutModal';
 import TicketModal from './TicketModal';
 import ChatPanel from './ChatPanel';
 
-function HeaderNav({
-  view,
-  setView,
-}: {
-  view: 'catalog' | 'cart';
-  setView: (v: 'catalog' | 'cart') => void;
-}) {
+function HeaderNav({ setView }: { setView: (v: 'catalog' | 'cart') => void }) {
   const { totalCount } = useCart();
+  const btnClass =
+    'flex shrink-0 items-center gap-1.5 rounded-full bg-brand-cardbg px-3 py-2 text-sm font-bold text-brand-text shadow-md transition hover:brightness-95 sm:px-4';
 
   return (
-    <div className="mb-3 flex items-center justify-between gap-2">
-      <button
-        onClick={() => setView('catalog')}
-        className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold shadow-sm transition sm:px-4 ${
-          view === 'catalog' ? 'bg-white text-brand-text' : 'bg-white/20 text-white'
-        }`}
-      >
+    <div className="mb-2 flex items-center justify-between gap-2">
+      <button onClick={() => setView('catalog')} className={btnClass}>
         <Icon icon="solar:book-2-bold" width={17} />
         <span className="hidden sm:inline">קטלוג</span>
       </button>
 
       <div className="min-w-0 flex-1" />
 
-      <button
-        onClick={() => setView('cart')}
-        className={`relative flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold shadow-sm transition sm:px-4 ${
-          view === 'cart' ? 'bg-white text-brand-text' : 'bg-white/20 text-white'
-        }`}
-      >
+      <button onClick={() => setView('cart')} className={`relative ${btnClass}`}>
         <Icon icon="solar:cart-large-minimalistic-bold" width={17} />
         <span className="hidden sm:inline">עגלה</span>
         {totalCount > 0 && (
@@ -101,13 +87,13 @@ function ShellInner({ rows }: { rows: ProductRow[] }) {
   return (
     <div className="min-h-screen bg-brand-bg">
       <header
-        className="sticky top-0 z-50 px-5 pt-5 pb-4 shadow-lg"
+        className="sticky top-0 z-50 px-3 pt-3 pb-2.5 shadow-lg"
         style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
       >
-        <HeaderNav view={view} setView={setView} />
+        <HeaderNav setView={setView} />
         <Banner />
         {view === 'catalog' && (
-          <div className="mt-4">
+          <div className="mt-2">
             <SearchBar value={query} onChange={setQuery} />
           </div>
         )}

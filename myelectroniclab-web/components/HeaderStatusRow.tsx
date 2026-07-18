@@ -20,7 +20,7 @@ export default function HeaderStatusRow({
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <div className="mt-2 flex items-center justify-between text-xs text-white/70">
+    <div className="mt-1.5 flex items-center justify-between text-xs text-white/70">
       <div className="flex items-center gap-2">
         <button
           onClick={onRefresh}

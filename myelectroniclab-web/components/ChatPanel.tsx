@@ -1,12 +1,11 @@
-// Version: 2.0
-// Title: Chat Panel | Important Data: wired to real /api/chat route (OpenAI +
-// tool calling against Supabase). Maintains conversation history in the
-// {role, content} shape expected by the API, mirroring the original site's
-// chatHistory array.
+// Version: 3.0
+// Title: Chat Panel | Important Data: added auto-scroll-to-bottom - fires whenever
+// messages array or typing indicator changes, using a ref on the messages
+// container + scrollTo with smooth behavior.
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@iconify/react';
 
 type Message = { role: 'user' | 'assistant'; content: string };
@@ -20,6 +19,14 @@ export default function ChatPanel({ onClose }: { onClose: () => void }) {
   ]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // גלילה אוטומטית לתחתית בכל הודעה חדשה / שינוי במצב ה-typing indicator
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, [messages, typing]);
 
   async function send() {
     const text = input.trim();
@@ -74,7 +81,7 @@ export default function ChatPanel({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto p-3">
+      <div ref={scrollRef} className="flex flex-1 flex-col gap-2.5 overflow-y-auto p-3">
         {messages.map((m, i) => (
           <div
             key={i}
