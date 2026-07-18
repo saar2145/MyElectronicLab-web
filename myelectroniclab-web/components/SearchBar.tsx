@@ -1,11 +1,12 @@
-// Version: 3.0
-// Title: Search Bar | Important Data: FIX - the input background is intentionally
-// ALWAYS light (bg-white/90) regardless of site theme (floats on the blue header
-// gradient like a distinct pill, same as original design). Previously the text
-// color used the theme-switching `text-brand-text` token, which resolves to a
-// LIGHT color in dark mode - invisible against the always-light background. Now
-// hardcoded to a fixed dark navy that never changes with theme, matching the
-// fixed-light background.
+// Version: 3.1
+// Title: Search Bar | Important Data: FIX v3.1 - added explicit w-full + self-center
+// to the wrapper div. In the header's flex-col layout, a plain <div> with only
+// max-width (no explicit width) interacts ambiguously with flexbox's default
+// align-items:stretch, causing it to shrink to a much narrower width than
+// intended. Being fully explicit (w-full to claim the row, max-w-xl to cap it,
+// self-center to center it as a flex item) removes all ambiguity. Banner (an
+// <img>, a CSS "replaced element") wasn't affected by the same header change
+// because replaced elements are exempt from align-items:stretch by spec.
 
 'use client';
 
@@ -19,7 +20,7 @@ export default function SearchBar({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="relative mx-auto max-w-xl">
+    <div className="relative mx-auto w-full max-w-xl self-center">
       <input
         type="text"
         value={value}

@@ -9,7 +9,7 @@ export default function Banner() {
     <img
       src="https://lh3.googleusercontent.com/d/1-a1wyruaEH7ijcTd3_po5WJuHF64IMZ5"
       alt="MyElectronicLab"
-      className="mx-auto block h-auto w-[160px] sm:w-[220px] md:w-[300px]"
+      className="mx-auto block h-auto w-[160px] self-center sm:w-[220px] md:w-[300px]"
     />
   );
 }
