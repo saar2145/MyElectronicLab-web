@@ -1,7 +1,9 @@
-// Version: 1.0
-// Title: Login Page | Important Data: email/password sign-in via Supabase Auth
-// only (no SSO). On success, middleware.ts keeps the session cookie fresh on
-// subsequent requests.
+// Version: 1.1
+// Title: Login Page | Change from v1.0: "הרשם כאן" link now uses
+// text-brand-linktext instead of text-brand-link, which was unreadable in dark
+// mode (dark text on dark card background). Important Data: email/password
+// sign-in via Supabase Auth only (no SSO). On success, proxy.ts keeps the
+// session cookie fresh on subsequent requests.
 
 'use client';
 
@@ -87,7 +89,7 @@ export default function LoginPage() {
 
           <p className="text-center text-xs text-brand-textsoft">
             עדיין אין לך חשבון?{' '}
-            <a href="/register" className="font-bold text-brand-link">
+            <a href="/register" className="font-bold text-brand-linktext hover:underline">
               הרשם כאן
             </a>
           </p>

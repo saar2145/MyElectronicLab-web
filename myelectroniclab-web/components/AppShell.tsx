@@ -1,8 +1,10 @@
-// Version: 2.0
-// Title: App Shell | Important Data: full integration - banner, theme toggle,
-// FAB group (chat/ticket/about), all modals, refresh via router.refresh().
-// This is the "1:1 parity" pass matching the original Index.html feature set
-// (chat/ticket UIs are shells only - TODO Step 2: wire to backend).
+// Version: 2.1
+// Title: App Shell | Change from v2.0: added UserMenu (avatar/login) to
+// HeaderNav, next to the cart button. Important Data: full integration -
+// banner, theme toggle, FAB group (chat/ticket/about), all modals, refresh via
+// router.refresh(). This is the "1:1 parity" pass matching the original
+// Index.html feature set (chat/ticket UIs are shells only - TODO Step 2: wire
+// to backend).
 
 'use client';
 
@@ -24,6 +26,7 @@ import FabGroup from './FabGroup';
 import AboutModal from './AboutModal';
 import TicketModal from './TicketModal';
 import ChatPanel from './ChatPanel';
+import UserMenu from './UserMenu';
 
 function HeaderNav({ setView }: { setView: (v: 'catalog' | 'cart') => void }) {
   const { totalCount } = useCart();
@@ -48,6 +51,8 @@ function HeaderNav({ setView }: { setView: (v: 'catalog' | 'cart') => void }) {
           </span>
         )}
       </button>
+
+      <UserMenu />
     </div>
   );
 }

@@ -8,6 +8,7 @@
   --brand-name: #bdd8ff;
   --brand-model: #b4edf5;
   --brand-link: #b8ccee;
+  --brand-linktext: #1565c0;
   --brand-picture: #d2ebff;
   --brand-price: #ffd4a8;
   --brand-category: #bdd0e5;
@@ -23,6 +24,7 @@ html[data-theme="dark"] {
   --brand-name: #153a6a;
   --brand-model: #0c4d5e;
   --brand-link: #14305a;
+  --brand-linktext: #7fb2f0;
   --brand-picture: #103550;
   --brand-price: #553a18;
   --brand-category: #182e44;
@@ -38,6 +40,7 @@ html[data-theme="dark"] {
   --color-brand-name: var(--brand-name);
   --color-brand-model: var(--brand-model);
   --color-brand-link: var(--brand-link);
+  --color-brand-linktext: var(--brand-linktext);
   --color-brand-picture: var(--brand-picture);
   --color-brand-price: var(--brand-price);
   --color-brand-category: var(--brand-category);

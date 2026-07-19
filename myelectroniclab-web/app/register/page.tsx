@@ -1,10 +1,13 @@
-// Version: 1.0
-// Title: Registration Page | Important Data: self-managed email/password auth only
-// (no Google SSO). Collects all required fields per spec (name, phone, email,
-// gender, role, college) and passes them as auth signUp metadata - the
-// handle_new_user() trigger in supabase_schema_v1.1_auth.sql copies them into
-// public.profiles automatically. Mentor accounts show a pending-approval message
-// instead of redirecting straight into the site (mentor_approved defaults to false).
+// Version: 1.2
+// Title: Registration Page | Change from v1.1: added the 9-icon avatar picker
+// (stored as profiles.avatar_icon via signUp metadata, see
+// supabase_schema_v1.2_avatar.sql); "הרשם כאן"/login link now uses
+// text-brand-linktext instead of text-brand-link, which was unreadable in dark
+// mode (dark text on dark card background). Important Data: self-managed
+// email/password auth only (no Google SSO). Collects all required fields per
+// spec (name, phone, email, gender, role, college, avatar). Mentor accounts
+// show a pending-approval message instead of redirecting straight into the site
+// (mentor_approved defaults to false).
 
 'use client';
 
@@ -12,6 +15,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
+import { AVATAR_ICONS, DEFAULT_AVATAR_KEY } from '@/lib/avatar-icons';
 
 const inputClass =
   'w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none focus:border-brand-name';
@@ -27,6 +31,7 @@ export default function RegisterPage() {
     gender: '',
     role: 'student',
     college: '',
+    avatarIcon: DEFAULT_AVATAR_KEY as string,
   });
   const [status, setStatus] = useState<{ type: 'error' | 'success'; msg: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +61,7 @@ export default function RegisterPage() {
           gender: form.gender,
           role: form.role,
           college: form.college,
+          avatar_icon: form.avatarIcon,
         },
       },
     });
@@ -79,7 +85,7 @@ export default function RegisterPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-brand-bg p-4" dir="rtl">
         <div className="w-full max-w-sm rounded-2xl bg-brand-cardbg p-8 text-center shadow-lg">
-          <Icon icon="solar:clock-circle-bold" width={44} className="mx-auto mb-3 text-brand-link" />
+          <Icon icon="solar:clock-circle-bold" width={44} className="mx-auto mb-3 text-brand-linktext" />
           <h1 className="mb-2 text-lg font-bold text-brand-text">ההרשמה שלך התקבלה</h1>
           <p className="text-sm text-brand-textsoft">
             חשבון מנחה דורש אישור ידני של האדמין לפני הפעלה. נעדכן אותך במייל כשהחשבון מאושר.
@@ -151,6 +157,31 @@ export default function RegisterPage() {
             <input value={form.college} onChange={(e) => update('college', e.target.value)} className={inputClass} />
           </div>
 
+          <div>
+            <label className={labelClass}>תמונת פרופיל</label>
+            <div className="grid grid-cols-3 gap-2">
+              {AVATAR_ICONS.map((a) => {
+                const selected = form.avatarIcon === a.key;
+                return (
+                  <button
+                    key={a.key}
+                    type="button"
+                    onClick={() => update('avatarIcon', a.key)}
+                    title={a.label}
+                    className={`flex flex-col items-center gap-1 rounded-xl border-2 py-2.5 transition ${
+                      selected
+                        ? 'border-brand-linktext bg-brand-picture'
+                        : 'border-brand-category bg-brand-bg hover:border-brand-linktext/50'
+                    }`}
+                  >
+                    <Icon icon={a.icon} width={26} className="text-brand-text" />
+                    <span className="text-[10px] text-brand-textsoft">{a.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {status && (
             <p className={`text-center text-xs ${status.type === 'error' ? 'text-red-500' : 'text-green-600'}`}>
               {status.msg}
@@ -167,7 +198,7 @@ export default function RegisterPage() {
 
           <p className="text-center text-xs text-brand-textsoft">
             כבר רשום?{' '}
-            <a href="/login" className="font-bold text-brand-link">
+            <a href="/login" className="font-bold text-brand-linktext hover:underline">
               התחבר כאן
             </a>
           </p>
