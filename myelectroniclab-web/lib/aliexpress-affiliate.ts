@@ -1,20 +1,17 @@
-// Version: 1.0
-// Title: AliExpress Affiliate API Client | Important Data: implements the
-// standard TOP (Taobao Open Platform) request-signing scheme that AliExpress's
-// Open API inherited - sort all params alphabetically by key, concatenate as
-// "key"+"value" pairs with no separators, then HMAC-SHA256 that string with
-// the app secret, uppercase hex. This is the well-documented standard pattern,
-// but I could not test it against real credentials while writing this (no
-// sandbox access to your AliExpress account) - so this is the single most
-// likely point of failure. On ANY unexpected response shape, this
-// deliberately stores the raw JSON in the check's `details` column instead of
-// silently failing, so a real failure can be diagnosed from the actual
-// response instead of guessed at - same lesson as every other "show the real
-// error" fix earlier in this project. Server-only - never import from a
-// client component (uses ALIEXPRESS_APP_SECRET).
+// Version: 1.1
+// Title: AliExpress Affiliate API Client | Change from v1.0: fixed
+// "IncompleteSignature" error - api-sg.aliexpress.com/sync is Alibaba's newer
+// IOP gateway (not the legacy TOP gateway), which requires the API PATH
+// ("/sync") prepended to the sorted param string before HMAC-signing. v1.0
+// was missing that prefix - a well-known gotcha with this specific gateway.
+// Important Data: sort all params alphabetically by key, concatenate as
+// "key"+"value" pairs with no separators, prepend "/sync", then HMAC-SHA256
+// that string with the app secret, uppercase hex. Server-only - never import
+// from a client component (uses ALIEXPRESS_APP_SECRET).
 
 import crypto from 'crypto';
 
+const API_PATH = '/sync';
 const API_ENDPOINT = 'https://api-sg.aliexpress.com/sync';
 
 function signParams(params: Record<string, string>, secret: string): string {
@@ -22,7 +19,8 @@ function signParams(params: Record<string, string>, secret: string): string {
     .sort()
     .map((key) => `${key}${params[key]}`)
     .join('');
-  return crypto.createHmac('sha256', secret).update(sorted, 'utf8').digest('hex').toUpperCase();
+  const signBase = API_PATH + sorted;
+  return crypto.createHmac('sha256', secret).update(signBase, 'utf8').digest('hex').toUpperCase();
 }
 
 function timestamp(): string {
