@@ -1,13 +1,16 @@
-// Version: 1.2
-// Title: Login Page | Change from v1.1: added "שכחתי סיסמה" link to
-// /forgot-password. Important Data: email/password sign-in via Supabase Auth
-// only (no SSO). On success, proxy.ts keeps the session cookie fresh on
-// subsequent requests.
+// Version: 1.3
+// Title: Login Page | Change from v1.2: supports a ?next= query param - after
+// a successful login, redirects there instead of always to "/". Used by
+// /join-class/[code] so a logged-out student clicking a mentor's invite link
+// ends up back on that exact invite after logging in, instead of the
+// catalog. Important Data: email/password sign-in via Supabase Auth only (no
+// SSO). On success, proxy.ts keeps the session cookie fresh on subsequent
+// requests.
 
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
 
@@ -17,6 +20,7 @@ const labelClass = 'mb-1 block text-xs font-bold text-brand-textsoft';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -41,7 +45,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push('/');
+    router.push(searchParams.get('next') || '/');
     router.refresh();
   }
 

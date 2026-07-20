@@ -1,18 +1,17 @@
-// Version: 4.0
-// Title: Mentor Class Detail | Change from v3.0: (1) roster is now a GRID of
-// cards (not a list) - each card shows the student's own free-text
-// status_note (student_projects.status_note, see
-// supabase_schema_v1.12_status_and_read.sql) right on the card, so the
-// mentor sees project state at a glance without opening anything; (2) clicking
-// a card opens a chat MODAL styled like the student's own chat (bubbles,
-// Enter-to-send) instead of an inline expand-in-place note form; (3) "unread"
-// is now driven by mentor_class_students.mentor_last_read_at instead of a
-// last-sender heuristic - opening a student's chat auto-marks it read, and
-// there's also an explicit "סמן כנקרא" button on the card for the case where
-// the mentor doesn't need to reply. Important Data: relies on the mentor-read
-// RLS policies (profiles/student_projects/student_milestones scoped to
-// "students in my classes") and the class_assignments_student_select policy
-// (excludes archived).
+// Version: 4.1
+// Title: Mentor Class Detail | Change from v4.0: added a "העתק קישור הזמנה"
+// button next to the join code - copies /join-class/[code], which shows a
+// confirmation card (class name + mentor name) via get_class_by_code() before
+// the student joins (see app/join-class/[code]/page.tsx). Important Data:
+// roster is a GRID of cards (not a list) - each card shows the student's own
+// free-text status_note right on the card. Clicking a card opens a chat MODAL
+// styled like the student's own chat (bubbles, Enter-to-send). "Unread" is
+// driven by mentor_class_students.mentor_last_read_at - opening a student's
+// chat auto-marks it read, and there's also an explicit "סמן כנקרא" button on
+// the card for the case where the mentor doesn't need to reply. Relies on the
+// mentor-read RLS policies (profiles/student_projects/student_milestones
+// scoped to "students in my classes") and the class_assignments_student_select
+// policy (excludes archived).
 
 'use client';
 
@@ -165,6 +164,7 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [chatStudent, setChatStudent] = useState<StudentRow | null>(null);
 
   const [assignTitle, setAssignTitle] = useState('');
@@ -253,6 +253,13 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
     navigator.clipboard.writeText(cls.join_code);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  function copyLink() {
+    if (!cls) return;
+    navigator.clipboard.writeText(`${window.location.origin}/join-class/${cls.join_code}`);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 1500);
   }
 
   async function markAsRead(studentId: string) {
@@ -354,6 +361,10 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
         <button onClick={copyCode} className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-brand-picture px-3 py-2 text-xs font-bold text-brand-text">
           <Icon icon={copied ? 'solar:check-circle-bold' : 'solar:copy-bold'} width={14} />
           <span className="font-mono tracking-widest">{cls.join_code}</span>
+        </button>
+        <button onClick={copyLink} className="mt-1.5 flex items-center justify-center gap-2 rounded-xl bg-brand-bg px-3 py-2 text-xs font-bold text-brand-textsoft">
+          <Icon icon={linkCopied ? 'solar:check-circle-bold' : 'solar:link-bold'} width={14} />
+          {linkCopied ? 'הקישור הועתק' : 'העתק קישור הזמנה'}
         </button>
       </aside>
 
