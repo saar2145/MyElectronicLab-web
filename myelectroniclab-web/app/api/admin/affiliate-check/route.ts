@@ -1,20 +1,32 @@
-// Version: 2.0
-// Title: Admin Affiliate Check API Route | Change from v1.0: step 2 now
-// mirrors the old GAS system exactly - step 1 (checkLinkEligibility) is
-// called on the product's ORIGINAL stored link (not a resolved URL - the
-// AliExpress API resolves it itself, exactly like the old
-// checkAliExpressLinkEligibility_ did with the raw sheet URL), and only if
-// step 1 says eligible does step 2 (fetchCommissionRate) run, using the item
-// id extracted from my own HTTP redirect-follow (kept as a cheap
-// pre-check for fully dead links before spending an AliExpress API call).
-// Important Data: GET returns the most recent check per product. Runs
-// products SEQUENTIALLY with a delay between AliExpress calls (rate limits +
-// serverless timeout ceiling; large catalogs may need chunking later).
+// Version: 2.1
+// Title: Admin Affiliate Check API Route | Change from v2.0: the step-0
+// pre-check fetch was returning "broken" for every product - almost
+// certainly AliExpress blocking a server request with no browser
+// User-Agent header (a very common anti-bot behavior, unrelated to the
+// AliExpress API signing fixed in v2.0 of lib/aliexpress-affiliate.ts).
+// Added a realistic User-Agent/Accept-Language to that fetch. Also: on any
+// 'broken' status, `details` now always includes the exact HTTP status or
+// exception text, so if this still fails the real cause is visible instead
+// of a bare label. Important Data: step 1 (checkLinkEligibility) is called
+// on the product's ORIGINAL stored link (AliExpress's own API resolves it -
+// exactly like the old checkAliExpressLinkEligibility_ did with the raw
+// sheet URL); step 2 (fetchCommissionRate) only runs if step 1 says
+// eligible, using the item id extracted from this pre-check's resolved URL.
+// Runs products SEQUENTIALLY with a delay between AliExpress calls (rate
+// limits + serverless timeout ceiling; large catalogs may need chunking
+// later).
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionToken } from '@/lib/admin-auth';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { checkLinkEligibility, fetchCommissionRate, extractItemId } from '@/lib/aliexpress-affiliate';
+
+const BROWSER_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9,he;q=0.8',
+};
 
 function requireAdmin(req: NextRequest): boolean {
   const token = req.cookies.get('admin_session')?.value;
@@ -85,19 +97,20 @@ export async function POST(req: NextRequest) {
     let details = '';
 
     // בדיקה מקדימה זולה: הקישור בכלל עונה? (לא קורא ל-API של AliExpress בשביל זה)
+    // עם User-Agent של דפדפן אמיתי - AliExpress חוסם לעתים קרובות בקשות בלי זה
     try {
-      const res = await fetch(product.link, { method: 'GET', redirect: 'follow' });
+      const res = await fetch(product.link, { method: 'GET', redirect: 'follow', headers: BROWSER_HEADERS });
       httpStatus = res.status;
       resolvedUrl = res.url;
       if (res.status >= 200 && res.status < 400) {
         itemId = extractItemId(resolvedUrl);
       } else {
         status = 'broken';
-        details = `HTTP ${res.status} מהקישור`;
+        details = `HTTP ${res.status} מהקישור (${res.statusText || 'ללא הודעה'})`;
       }
     } catch (e) {
       status = 'broken';
-      details = `שגיאת רשת: ${String(e)}`;
+      details = `שגיאת רשת בבדיקת הקישור: ${e instanceof Error ? e.message : String(e)}`;
     }
 
     // שלב 1 (קובע): זכאות אמיתית - בדיוק כמו במערכת הישנה, על ה-URL המקורי
