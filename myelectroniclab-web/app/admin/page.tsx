@@ -1,17 +1,18 @@
-// Version: 2.0
-// Title: Admin Dashboard | Change from v1.1: full redesign from a plain
-// tab-switcher into a proper dashboard shell - sidebar nav (עברי RTL: יושב
-// מימין) + an overview home with stat cards, plus two new sections (משתמשים,
-// הוספת מוצרים) alongside the existing פניות/אישור מנחים. Important Data:
-// client component - checks auth by attempting a GET to /api/admin/tickets
-// (401 → show login form). Session persists via httpOnly cookie. "הוספת
-// מוצרים" requires picking an EXISTING category - see the long comment in
-// app/api/admin/products/route.ts for why (the catalog's grouping is
-// order-based, not a relational category_id).
+// Version: 2.1
+// Title: Admin Dashboard | Change from v2.0: added a "בדיקת אפיליאט" section -
+// checks every product's link for two failure modes (broken link, or resolves
+// fine but lost the affiliate tracking) plus, via the AliExpress Affiliate
+// API, the live commission rate - see lib/aliexpress-affiliate.ts and
+// app/api/admin/affiliate-check/route.ts for the full mechanism. Important
+// Data: client component - checks auth by attempting a GET to
+// /api/admin/tickets (401 → show login form). Session persists via httpOnly
+// cookie. "הוספת מוצרים" requires picking an EXISTING category - see the long
+// comment in app/api/admin/products/route.ts for why (the catalog's grouping
+// is order-based, not a relational category_id).
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Icon } from '@iconify/react';
 
 type Ticket = {
@@ -57,7 +58,7 @@ type AdminProduct = {
 };
 
 type OverviewStats = { openTickets: number; pendingMentors: number; totalUsers: number; totalProducts: number };
-type Tab = 'overview' | 'tickets' | 'mentors' | 'users' | 'add-product';
+type Tab = 'overview' | 'tickets' | 'mentors' | 'users' | 'add-product' | 'affiliate-check';
 
 const STATUS_COLORS: Record<string, string> = {
   פתוח: 'bg-red-100 text-red-800',
@@ -639,12 +640,145 @@ function AddProductSection() {
   );
 }
 
+const STATUS_META: Record<string, { label: string; color: string; icon: string }> = {
+  ok: { label: 'תקין', color: 'bg-green-500/15 text-green-700', icon: 'solar:check-circle-bold' },
+  broken: { label: 'שבור', color: 'bg-red-500/15 text-red-600', icon: 'solar:close-circle-bold' },
+  no_affiliate_tag: { label: 'בלי תג אפיליאט', color: 'bg-amber-500/15 text-amber-700', icon: 'solar:danger-triangle-bold' },
+  rate_mismatch: { label: 'פער בעמלה', color: 'bg-amber-500/15 text-amber-700', icon: 'solar:danger-triangle-bold' },
+  api_error: { label: 'שגיאת API', color: 'bg-brand-category text-brand-textsoft', icon: 'solar:question-circle-bold' },
+};
+
+type AffiliateProductRow = {
+  id: number;
+  name: string | null;
+  link: string | null;
+  check: { status: string; checked_at: string; commission_rate: number | null; http_status: number | null; details: string | null } | null;
+};
+
+function AffiliateCheckSection() {
+  const [rows, setRows] = useState<AffiliateProductRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch('/api/admin/affiliate-check');
+    if (res.ok) {
+      const json = await res.json();
+      setRows(json.products ?? []);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- טעינת נתונים סטנדרטית ב-mount
+    load();
+  }, []);
+
+  async function runAll() {
+    setRunning(true);
+    await fetch('/api/admin/affiliate-check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+    setRunning(false);
+    load();
+  }
+
+  async function runOne(productId: number) {
+    setRunning(true);
+    await fetch('/api/admin/affiliate-check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId }) });
+    setRunning(false);
+    load();
+  }
+
+  return (
+    <div>
+      <div className="mb-5 flex items-center justify-between">
+        <h1 className={sectionTitleClass}>
+          <Icon icon="solar:link-round-angle-bold" width={22} /> בדיקת קישורי אפיליאט
+        </h1>
+        <button onClick={runAll} disabled={running} className="flex items-center gap-1 rounded-full bg-brand-name px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-60">
+          <Icon icon="solar:refresh-bold" width={14} className={running ? 'animate-spin' : ''} />
+          {running ? 'בודק...' : 'בדוק הכל'}
+        </button>
+      </div>
+
+      <p className="mb-4 text-xs text-brand-textsoft">
+        שכבה 1 בודקת שהקישור בכלל עובד ועדיין נושא תג אפיליאט. שכבה 2 (רק אם שכבה 1 עברה) שואלת את AliExpress ישירות מה שיעור העמלה בפועל. ריצה מלאה יכולה לקחת זמן על קטלוג גדול.
+      </p>
+
+      {loading ? (
+        <p className="text-center text-brand-textsoft">טוען...</p>
+      ) : rows.length === 0 ? (
+        <p className="py-16 text-center text-brand-textsoft">אין מוצרים עם קישור</p>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl bg-brand-cardbg shadow-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-brand-category text-right text-brand-textsoft">
+                <th className="px-3 py-3">מוצר</th>
+                <th className="px-3 py-3">סטטוס</th>
+                <th className="px-3 py-3">עמלה</th>
+                <th className="px-3 py-3">נבדק לאחרונה</th>
+                <th className="px-3 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const meta = r.check ? STATUS_META[r.check.status] : null;
+                return (
+                  <Fragment key={r.id}>
+                    <tr className="border-b border-brand-category/50 text-brand-text">
+                      <td className="px-3 py-3">{r.name}</td>
+                      <td className="px-3 py-3">
+                        {meta ? (
+                          <span className={`flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${meta.color}`}>
+                            <Icon icon={meta.icon} width={12} />
+                            {meta.label}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-brand-textsoft">עוד לא נבדק</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-xs">{r.check?.commission_rate != null ? `${r.check.commission_rate}%` : '—'}</td>
+                      <td className="px-3 py-3 text-xs">{r.check ? new Date(r.check.checked_at).toLocaleString('he-IL') : '—'}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex gap-2">
+                          <button onClick={() => runOne(r.id)} disabled={running} className="rounded-lg bg-brand-bg px-2.5 py-1.5 text-xs font-bold text-brand-text disabled:opacity-60">
+                            בדוק שוב
+                          </button>
+                          {r.check?.details && (
+                            <button onClick={() => setExpandedId(expandedId === r.id ? null : r.id)} className="rounded-lg bg-brand-bg px-2.5 py-1.5 text-xs font-bold text-brand-textsoft">
+                              פרטים
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                    {expandedId === r.id && r.check?.details && (
+                      <tr>
+                        <td colSpan={5} className="bg-brand-bg px-3 py-3">
+                          <pre className="max-h-40 overflow-auto whitespace-pre-wrap text-[10px] text-brand-textsoft">{r.check.details}</pre>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const NAV_ITEMS: { tab: Tab; icon: string; label: string }[] = [
   { tab: 'overview', icon: 'solar:widget-5-bold', label: 'סקירה כללית' },
   { tab: 'tickets', icon: 'solar:ticket-bold', label: 'ניהול פניות' },
   { tab: 'mentors', icon: 'solar:user-check-rounded-bold', label: 'אישור מנחים' },
   { tab: 'users', icon: 'solar:users-group-rounded-bold', label: 'משתמשים' },
   { tab: 'add-product', icon: 'solar:box-bold', label: 'הוספת מוצרים' },
+  { tab: 'affiliate-check', icon: 'solar:link-round-angle-bold', label: 'בדיקת אפיליאט' },
 ];
 
 export default function AdminPage() {
@@ -687,6 +821,7 @@ export default function AdminPage() {
         {tab === 'mentors' && <MentorsSection />}
         {tab === 'users' && <UsersSection />}
         {tab === 'add-product' && <AddProductSection />}
+        {tab === 'affiliate-check' && <AffiliateCheckSection />}
       </main>
     </div>
   );
