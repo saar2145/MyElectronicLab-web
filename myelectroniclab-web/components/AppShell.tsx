@@ -1,10 +1,12 @@
-// Version: 2.1
-// Title: App Shell | Change from v2.0: added UserMenu (avatar/login) to
-// HeaderNav, next to the cart button. Important Data: full integration -
-// banner, theme toggle, FAB group (chat/ticket/about), all modals, refresh via
-// router.refresh(). This is the "1:1 parity" pass matching the original
-// Index.html feature set (chat/ticket UIs are shells only - TODO Step 2: wire
-// to backend).
+// Version: 2.2
+// Title: App Shell | Change from v2.1: Banner moved from its own flex-col row
+// into the SAME row as HeaderNav's buttons - absolutely centered over the gap
+// between the "קטלוג" button and the "עגלה"+UserMenu group, instead of
+// stacking below them. This is what the user meant by "the header gap" (found
+// via DevTools element inspection) - it wasn't a CSS bug, it was flex-col
+// stacking every header row including the banner. Important Data: full
+// integration - banner, theme toggle, FAB group (chat/ticket/about), all
+// modals, refresh via router.refresh().
 
 'use client';
 
@@ -34,25 +36,31 @@ function HeaderNav({ setView }: { setView: (v: 'catalog' | 'cart') => void }) {
     'flex shrink-0 items-center gap-2 rounded-full bg-brand-cardbg px-4 py-3 text-base font-bold text-brand-text shadow-md transition hover:brightness-95 sm:px-6 sm:text-lg';
 
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className="relative flex items-center justify-between gap-2">
       <button onClick={() => setView('catalog')} className={btnClass}>
         <Icon icon="solar:book-2-bold" width={22} />
         <span>קטלוג</span>
       </button>
 
-      <div className="min-w-0 flex-1" />
+      {/* הבאנר ממורכז מעל השורה עצמה (absolute), לא תופס שורה נפרדת -
+          pointer-events-none כדי שלא יחסום קליק על מה שמתחתיו בקצוות */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <Banner />
+      </div>
 
-      <button onClick={() => setView('cart')} className={`relative ${btnClass}`}>
-        <Icon icon="solar:cart-large-minimalistic-bold" width={22} />
-        <span>עגלה</span>
-        {totalCount > 0 && (
-          <span className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-            {totalCount}
-          </span>
-        )}
-      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        <button onClick={() => setView('cart')} className={`relative ${btnClass}`}>
+          <Icon icon="solar:cart-large-minimalistic-bold" width={22} />
+          <span>עגלה</span>
+          {totalCount > 0 && (
+            <span className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+              {totalCount}
+            </span>
+          )}
+        </button>
 
-      <UserMenu />
+        <UserMenu />
+      </div>
     </div>
   );
 }
@@ -96,7 +104,6 @@ function ShellInner({ rows }: { rows: ProductRow[] }) {
         style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
       >
         <HeaderNav setView={setView} />
-        <Banner />
         {view === 'catalog' && <SearchBar value={query} onChange={setQuery} />}
         <HeaderStatusRow lastUpdated={lastUpdated} onRefresh={handleRefresh} refreshing={refreshing} />
       </header>
