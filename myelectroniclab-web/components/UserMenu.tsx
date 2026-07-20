@@ -1,10 +1,13 @@
-// Version: 1.0
-// Title: User Menu (Header) | Important Data: client component placed in
-// AppShell's HeaderNav, next to the cart button. Reads the Supabase auth
-// session client-side, then fetches the matching profiles row (full_name,
-// avatar_icon) - RLS already permits a user to select their own row (see
-// supabase_schema_v1.1_auth.sql). Subscribes to onAuthStateChange so the menu
-// updates immediately after login/logout without a full page reload.
+// Version: 1.1
+// Title: User Menu (Header) | Change from v1.0: dropdown now includes a link
+// to /profile (the "logo always visible in a corner + a place to see all
+// their details" ask). Important Data: client component placed in AppShell's
+// HeaderNav, next to the cart button - the header itself is `sticky top-0`,
+// so this avatar stays visible on scroll without extra positioning. Reads the
+// Supabase auth session client-side, then fetches the matching profiles row
+// (full_name, avatar_icon) - RLS already permits a user to select their own
+// row (see supabase_schema_v1.1_auth.sql). Subscribes to onAuthStateChange so
+// the menu updates immediately after login/logout without a full page reload.
 
 'use client';
 
@@ -89,6 +92,13 @@ export default function UserMenu() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute left-0 z-50 mt-2 w-48 rounded-xl bg-brand-cardbg p-2 shadow-2xl ring-1 ring-black/5">
             <div className="truncate px-3 py-2 text-sm font-bold text-brand-text">{profile.full_name}</div>
+            <a
+              href="/profile"
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-brand-text hover:bg-brand-bg"
+            >
+              <Icon icon="solar:user-id-bold" width={18} />
+              הפרופיל שלי
+            </a>
             <button
               onClick={handleSignOut}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-brand-bg"
