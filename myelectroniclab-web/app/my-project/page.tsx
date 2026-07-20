@@ -1,11 +1,10 @@
-// Version: 3.0
-// Title: My Project Page | Change from v2.0: removed the tasks/messages tabs -
-// that content now lives on the dedicated /my-class page (see chat: "הכיתה
-// שלי" needs to jump straight into a class panel, separate from personal
-// project tracking). This page is back to a single purpose: the 8-milestone
-// tracker. Important Data: one student_projects row per user (created on
-// first visit here), with exactly 8 student_milestones auto-seeded by a DB
-// trigger. Progress % is computed client-side, not stored.
+// Version: 3.1
+// Title: My Project Page | Change from v3.0: added a free-text status_note
+// field ("במשפט אחד - איפה אתה עומד") alongside the 8 fixed milestones - this
+// is shown prominently on the mentor's grid view. Important Data: one
+// student_projects row per user (created on first visit here), with exactly 8
+// student_milestones auto-seeded by a DB trigger. Progress % is computed
+// client-side, not stored.
 
 'use client';
 
@@ -15,7 +14,7 @@ import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
 import { MILESTONES, MilestoneStatus } from '@/lib/milestones';
 
-type Project = { id: string; title: string; description: string };
+type Project = { id: string; title: string; description: string; status_note: string };
 type Milestone = {
   id: string;
   milestone_key: string;
@@ -56,7 +55,7 @@ export default function MyProjectPage() {
 
     const { data: proj } = await supabase
       .from('student_projects')
-      .select('id, title, description')
+      .select('id, title, description, status_note')
       .eq('student_id', userData.user.id)
       .maybeSingle();
 
@@ -93,7 +92,10 @@ export default function MyProjectPage() {
   async function saveInfo() {
     if (!project) return;
     const supabase = getSupabaseAuthClient();
-    await supabase.from('student_projects').update({ title: project.title, description: project.description }).eq('id', project.id);
+    await supabase
+      .from('student_projects')
+      .update({ title: project.title, description: project.description, status_note: project.status_note })
+      .eq('id', project.id);
     setEditingInfo(false);
   }
 
@@ -178,6 +180,15 @@ export default function MyProjectPage() {
                 onChange={(e) => setProject({ ...project, description: e.target.value })}
                 className="min-h-20 w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none"
               />
+              <div>
+                <label className="mb-1 block text-xs font-bold text-brand-textsoft">איפה אני עומד עכשיו (במשפט אחד)</label>
+                <input
+                  value={project.status_note}
+                  onChange={(e) => setProject({ ...project, status_note: e.target.value })}
+                  placeholder="לדוגמה: תקוע על החיבור לחיישן, מחכה לתגובת המנחה"
+                  className="w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none"
+                />
+              </div>
               <button onClick={saveInfo} className="self-start rounded-lg bg-brand-name px-4 py-1.5 text-xs font-bold text-brand-text">
                 שמור
               </button>
@@ -187,6 +198,12 @@ export default function MyProjectPage() {
               <div>
                 <h1 className="mb-1 text-lg font-bold text-brand-text">{project.title || 'פרויקט הגמר שלי'}</h1>
                 {project.description && <p className="text-sm text-brand-textsoft">{project.description}</p>}
+                {project.status_note && (
+                  <p className="mt-2 rounded-lg bg-brand-bg px-3 py-2 text-xs font-bold text-brand-text">
+                    <Icon icon="solar:chat-square-like-linear" width={13} className="ml-1 inline" />
+                    {project.status_note}
+                  </p>
+                )}
               </div>
               <button onClick={() => setEditingInfo(true)} className="shrink-0 rounded-lg bg-brand-bg p-2 text-brand-textsoft">
                 <Icon icon="solar:pen-2-linear" width={16} />

@@ -1,8 +1,10 @@
-// Version: 1.0
-// Title: Profile Page | Important Data: shows all profile fields for the
-// logged-in user (name, phone, email, gender, role, college, mentor_approved)
-// and lets them change their avatar_icon (updates profiles table directly -
-// RLS's profiles_update_own policy permits this). Redirects to /login if no
+// Version: 1.1
+// Title: Profile Page | Change from v1.0: avatar picker now shows all 27
+// icons in a dense grid instead of 9 large buttons - see lib/avatar-icons.ts
+// v2.0. Important Data: shows all profile fields for the logged-in user
+// (name, phone, email, gender, role, college, mentor_approved) and lets them
+// change their avatar_icon (updates profiles table directly - RLS's
+// profiles_update_own policy permits this). Redirects to /login if no
 // session. Read-only for now on the other fields (name/phone/etc. editing is
 // not part of this pass - only avatar changes are wired to save).
 
@@ -133,7 +135,7 @@ export default function ProfilePage() {
             <h2 className="mb-2 text-sm font-bold text-brand-text">
               תמונת פרופיל {savingAvatar && <span className="text-xs font-normal text-brand-textsoft">(שומר...)</span>}
             </h2>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-7 gap-1.5 rounded-xl border border-brand-category bg-brand-bg p-2">
               {AVATAR_ICONS.map((a) => {
                 const selected = profile.avatar_icon === a.key;
                 return (
@@ -142,14 +144,11 @@ export default function ProfilePage() {
                     onClick={() => handleAvatarChange(a.key)}
                     disabled={savingAvatar}
                     title={a.label}
-                    className={`flex flex-col items-center gap-1 rounded-xl border-2 py-2.5 transition disabled:opacity-50 ${
-                      selected
-                        ? 'border-brand-linktext bg-brand-picture'
-                        : 'border-brand-category bg-brand-bg hover:border-brand-linktext/50'
+                    className={`flex aspect-square items-center justify-center rounded-lg transition disabled:opacity-50 ${
+                      selected ? 'bg-brand-picture ring-2 ring-brand-linktext' : 'hover:bg-brand-picture/50'
                     }`}
                   >
-                    <Icon icon={a.icon} width={26} className="text-brand-text" />
-                    <span className="text-[10px] text-brand-textsoft">{a.label}</span>
+                    <Icon icon={a.icon} width={18} className="text-brand-text" />
                   </button>
                 );
               })}

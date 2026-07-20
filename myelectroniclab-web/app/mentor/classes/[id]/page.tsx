@@ -1,15 +1,18 @@
-// Version: 3.0
-// Title: Mentor Class Detail | Change from v2.0: (1) roster shows a red dot
-// on students whose most recent message is theirs and unanswered - a proxy
-// for "unread", since there's no formal read-receipt system; (2) assignments
-// can be archived (hidden from students, kept in a new "ארכיון" section) or
-// hard-deleted; (3) the due-date field now has a visible label
-// ("תאריך הגשה (אופציונלי)") instead of only a hover tooltip; (4) new
-// "הגדרות כיתה" section - edit name/description, delete the whole class,
-// remove individual students from the roster. Important Data: relies on the
-// mentor-read RLS policies (profiles/student_projects/student_milestones
-// scoped to "students in my classes") and the class_assignments_student_select
-// policy update (excludes archived) from supabase_schema_v1.11.
+// Version: 4.0
+// Title: Mentor Class Detail | Change from v3.0: (1) roster is now a GRID of
+// cards (not a list) - each card shows the student's own free-text
+// status_note (student_projects.status_note, see
+// supabase_schema_v1.12_status_and_read.sql) right on the card, so the
+// mentor sees project state at a glance without opening anything; (2) clicking
+// a card opens a chat MODAL styled like the student's own chat (bubbles,
+// Enter-to-send) instead of an inline expand-in-place note form; (3) "unread"
+// is now driven by mentor_class_students.mentor_last_read_at instead of a
+// last-sender heuristic - opening a student's chat auto-marks it read, and
+// there's also an explicit "סמן כנקרא" button on the card for the case where
+// the mentor doesn't need to reply. Important Data: relies on the mentor-read
+// RLS policies (profiles/student_projects/student_milestones scoped to
+// "students in my classes") and the class_assignments_student_select policy
+// (excludes archived).
 
 'use client';
 
@@ -19,18 +22,138 @@ import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
 
 type ClassInfo = { id: string; class_name: string; join_code: string; description: string };
-type StudentRow = { id: string; full_name: string; phone: string; progress: number; hasUnread: boolean };
+type StudentRow = { id: string; full_name: string; phone: string; progress: number; statusNote: string; hasUnread: boolean };
 type Assignment = { id: string; title: string; description: string; due_date: string | null; created_at: string; archived: boolean };
 type Note = { id: string; note_type: 'note' | 'message' | 'task'; content: string; due_date: string | null; created_at: string; sender: 'mentor' | 'student' };
 
-const NOTE_TYPE_LABELS: Record<Note['note_type'], string> = { note: 'הערה', message: 'הודעה', task: 'מטלה אישית' };
-const NOTE_TYPE_ICONS: Record<Note['note_type'], string> = {
-  note: 'solar:notes-bold',
-  message: 'solar:chat-round-dots-bold',
-  task: 'solar:checklist-minimalistic-bold',
-};
-
 type Section = 'students' | 'assignments' | 'archive' | 'settings';
+
+function ChatModal({
+  student,
+  classId,
+  onClose,
+  onRead,
+}: {
+  student: StudentRow;
+  classId: string;
+  onClose: () => void;
+  onRead: () => void;
+}) {
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [text, setText] = useState('');
+  const [msgType, setMsgType] = useState<Note['note_type']>('message');
+  const [dueDate, setDueDate] = useState('');
+  const [sending, setSending] = useState(false);
+
+  async function load() {
+    const supabase = getSupabaseAuthClient();
+    const { data } = await supabase
+      .from('personal_notes')
+      .select('id, note_type, content, due_date, created_at, sender')
+      .eq('student_id', student.id)
+      .order('created_at', { ascending: true });
+    setNotes(data ?? []);
+    setLoading(false);
+
+    // נכנסים לצ'אט = נקרא. מעדכן mentor_last_read_at על שורת ה-roster של הסטודנט הזה
+    await supabase.from('mentor_class_students').update({ mentor_last_read_at: new Date().toISOString() }).eq('class_id', classId).eq('student_id', student.id);
+    onRead();
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- טעינה חד-פעמית ב-mount, וגם מסמן נקרא
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- מריץ פעם אחת בלבד ב-mount
+  }, []);
+
+  async function send() {
+    if (!text.trim()) return;
+    setSending(true);
+    const supabase = getSupabaseAuthClient();
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData.user) {
+      await supabase.from('personal_notes').insert({
+        mentor_id: userData.user.id,
+        student_id: student.id,
+        class_id: classId,
+        note_type: msgType,
+        content: text.trim(),
+        due_date: dueDate || null,
+        sender: 'mentor',
+      });
+      setText('');
+      setDueDate('');
+      await load();
+    }
+    setSending(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-2xl bg-brand-cardbg shadow-2xl" onClick={(e) => e.stopPropagation()} dir="rtl">
+        <div className="flex items-center justify-between border-b border-brand-category p-4">
+          <div>
+            <div className="text-sm font-bold text-brand-text">{student.full_name}</div>
+            <div className="text-xs text-brand-textsoft">{student.phone}</div>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-brand-textsoft hover:bg-brand-bg">
+            <Icon icon="solar:close-circle-linear" width={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          {loading ? (
+            <p className="py-6 text-center text-xs text-brand-textsoft">טוען...</p>
+          ) : notes.length === 0 ? (
+            <p className="py-6 text-center text-xs text-brand-textsoft">אין עדיין הודעות</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {notes.map((n) => (
+                <div
+                  key={n.id}
+                  className={`max-w-[80%] rounded-xl p-2.5 text-xs ${
+                    n.sender === 'mentor' ? 'self-end bg-brand-name text-brand-text' : 'self-start border border-brand-category bg-brand-bg text-brand-text'
+                  }`}
+                >
+                  <div className="mb-0.5 font-bold text-brand-textsoft">{n.sender === 'mentor' ? 'אני' : student.full_name}</div>
+                  <div>{n.content}</div>
+                  {n.due_date && <div className="mt-1 text-brand-textsoft">עד {n.due_date}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-brand-category p-3">
+          <div className="mb-2 flex gap-2">
+            <select value={msgType} onChange={(e) => setMsgType(e.target.value as Note['note_type'])} className="rounded-lg border border-brand-category bg-brand-bg px-2 py-1 text-xs text-brand-text outline-none">
+              <option value="message">הודעה</option>
+              <option value="note">הערה</option>
+              <option value="task">מטלה אישית</option>
+            </select>
+            {msgType === 'task' && (
+              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} title="תאריך יעד (אופציונלי)" className="rounded-lg border border-brand-category bg-brand-bg px-2 py-1 text-xs text-brand-text outline-none" />
+            )}
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && send()}
+              placeholder="כתוב הודעה..."
+              className="flex-1 rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none"
+              autoFocus
+            />
+            <button onClick={send} disabled={sending || !text.trim()} className="rounded-lg bg-brand-name px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-60">
+              שלח
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function MentorClassDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: classId } = usePromise(params);
@@ -42,18 +165,12 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [chatStudent, setChatStudent] = useState<StudentRow | null>(null);
 
   const [assignTitle, setAssignTitle] = useState('');
   const [assignDesc, setAssignDesc] = useState('');
   const [assignDue, setAssignDue] = useState('');
   const [savingAssignment, setSavingAssignment] = useState(false);
-
-  const [openStudentId, setOpenStudentId] = useState<string | null>(null);
-  const [notesByStudent, setNotesByStudent] = useState<Record<string, Note[]>>({});
-  const [noteType, setNoteType] = useState<Note['note_type']>('note');
-  const [noteContent, setNoteContent] = useState('');
-  const [noteDue, setNoteDue] = useState('');
-  const [savingNote, setSavingNote] = useState(false);
 
   const [settingsName, setSettingsName] = useState('');
   const [settingsDesc, setSettingsDesc] = useState('');
@@ -76,35 +193,39 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
     setSettingsName(classRow.class_name);
     setSettingsDesc(classRow.description ?? '');
 
-    const { data: roster } = await supabase.from('mentor_class_students').select('student_id').eq('class_id', classId);
+    const { data: roster } = await supabase.from('mentor_class_students').select('student_id, mentor_last_read_at').eq('class_id', classId);
     const studentIds = (roster ?? []).map((r) => r.student_id);
 
     if (studentIds.length > 0) {
       const { data: profiles } = await supabase.from('profiles').select('id, full_name, phone').in('id', studentIds);
-      const { data: projects } = await supabase.from('student_projects').select('id, student_id').in('student_id', studentIds);
+      const { data: projects } = await supabase.from('student_projects').select('id, student_id, status_note').in('student_id', studentIds);
 
       const projectIds = (projects ?? []).map((p) => p.id);
       const { data: milestones } = projectIds.length
         ? await supabase.from('student_milestones').select('student_project_id, status').in('student_project_id', projectIds)
         : { data: [] as { student_project_id: string; status: string }[] };
 
-      // עבור אינדיקטור "לא נענה" - השורה האחרונה לכל סטודנט בשיחה שלו
-      const { data: allNotes } = await supabase
+      const { data: studentMessages } = await supabase
         .from('personal_notes')
-        .select('student_id, sender, created_at')
+        .select('student_id, created_at')
         .in('student_id', studentIds)
+        .eq('sender', 'student')
         .order('created_at', { ascending: false });
 
-      const lastSenderByStudent = new Map<string, string>();
-      (allNotes ?? []).forEach((n) => {
-        if (!lastSenderByStudent.has(n.student_id)) lastSenderByStudent.set(n.student_id, n.sender);
+      const lastStudentMsgAt = new Map<string, string>();
+      (studentMessages ?? []).forEach((m) => {
+        if (!lastStudentMsgAt.has(m.student_id)) lastStudentMsgAt.set(m.student_id, m.created_at);
       });
+      const lastReadAt = new Map((roster ?? []).map((r) => [r.student_id, r.mentor_last_read_at as string | null]));
 
       const rows: StudentRow[] = (profiles ?? []).map((p) => {
         const proj = (projects ?? []).find((pr) => pr.student_id === p.id);
         const ms = proj ? (milestones ?? []).filter((m) => m.student_project_id === proj.id) : [];
         const progress = ms.length > 0 ? Math.round((ms.filter((m) => m.status === 'done').length / ms.length) * 100) : 0;
-        return { id: p.id, full_name: p.full_name, phone: p.phone, progress, hasUnread: lastSenderByStudent.get(p.id) === 'student' };
+        const lastMsg = lastStudentMsgAt.get(p.id);
+        const readAt = lastReadAt.get(p.id);
+        const hasUnread = !!lastMsg && (!readAt || new Date(lastMsg) > new Date(readAt));
+        return { id: p.id, full_name: p.full_name, phone: p.phone, progress, statusNote: proj?.status_note ?? '', hasUnread };
       });
       setStudents(rows);
     } else {
@@ -132,6 +253,12 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
     navigator.clipboard.writeText(cls.join_code);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  async function markAsRead(studentId: string) {
+    const supabase = getSupabaseAuthClient();
+    await supabase.from('mentor_class_students').update({ mentor_last_read_at: new Date().toISOString() }).eq('class_id', classId).eq('student_id', studentId);
+    setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, hasUnread: false } : s)));
   }
 
   async function addAssignment() {
@@ -162,51 +289,6 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
     const supabase = getSupabaseAuthClient();
     await supabase.from('class_assignments').delete().eq('id', id);
     load();
-  }
-
-  async function loadNotes(studentId: string) {
-    const supabase = getSupabaseAuthClient();
-    const { data } = await supabase
-      .from('personal_notes')
-      .select('id, note_type, content, due_date, created_at, sender')
-      .eq('student_id', studentId)
-      .order('created_at', { ascending: false });
-    setNotesByStudent((prev) => ({ ...prev, [studentId]: data ?? [] }));
-  }
-
-  function toggleStudent(studentId: string) {
-    if (openStudentId === studentId) {
-      setOpenStudentId(null);
-      return;
-    }
-    setOpenStudentId(studentId);
-    setNoteContent('');
-    setNoteDue('');
-    setNoteType('note');
-    loadNotes(studentId);
-  }
-
-  async function addNote(studentId: string) {
-    if (!noteContent.trim()) return;
-    setSavingNote(true);
-    const supabase = getSupabaseAuthClient();
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData.user) {
-      await supabase.from('personal_notes').insert({
-        mentor_id: userData.user.id,
-        student_id: studentId,
-        class_id: classId,
-        note_type: noteType,
-        content: noteContent.trim(),
-        due_date: noteDue || null,
-        sender: 'mentor',
-      });
-      setNoteContent('');
-      setNoteDue('');
-      await loadNotes(studentId);
-      load(); // מרענן גם את אינדיקטור "לא נענה" ברשימה
-    }
-    setSavingNote(false);
   }
 
   async function removeStudent(studentId: string) {
@@ -285,75 +367,45 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
             {students.length === 0 ? (
               <p className="py-16 text-center text-brand-textsoft">עדיין אין סטודנטים בכיתה - שתף את הקוד</p>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {students.map((s) => (
-                  <div key={s.id} className="rounded-xl bg-brand-cardbg shadow-sm">
-                    <div className="flex w-full items-center gap-2 p-4">
-                      <button onClick={() => toggleStudent(s.id)} className="flex flex-1 items-center justify-between gap-3 text-right">
-                        <div className="flex items-center gap-2">
-                          {s.hasUnread && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" title="הודעה חדשה שלא נענתה" />}
-                          <div>
-                            <div className="text-sm font-bold text-brand-text">{s.full_name}</div>
-                            <div className="text-xs text-brand-textsoft">{s.phone}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-brand-category">
-                            <div className="h-full rounded-full bg-brand-linktext" style={{ width: `${s.progress}%` }} />
-                          </div>
-                          <span className="text-xs font-bold text-brand-textsoft">{s.progress}%</span>
-                          <Icon icon={openStudentId === s.id ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} width={16} className="text-brand-textsoft" />
-                        </div>
-                      </button>
-                      <button onClick={() => removeStudent(s.id)} title="הסר מהכיתה" className="shrink-0 rounded-lg p-1.5 text-red-500 hover:bg-red-500/10">
-                        <Icon icon="solar:user-minus-rounded-bold" width={16} />
-                      </button>
+                  <div key={s.id} className="relative rounded-2xl bg-brand-cardbg p-4 shadow-sm">
+                    {s.hasUnread && <span className="absolute left-4 top-4 h-2.5 w-2.5 rounded-full bg-red-500" title="הודעה חדשה שלא נענתה" />}
+
+                    <div className="mb-2 text-sm font-bold text-brand-text">{s.full_name}</div>
+                    <div className="mb-3 text-xs text-brand-textsoft">{s.phone}</div>
+
+                    <div className="mb-3">
+                      <div className="mb-1 flex items-center justify-between text-xs font-bold text-brand-textsoft">
+                        <span>התקדמות</span>
+                        <span>{s.progress}%</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-brand-category">
+                        <div className="h-full rounded-full bg-brand-linktext" style={{ width: `${s.progress}%` }} />
+                      </div>
                     </div>
 
-                    {openStudentId === s.id && (
-                      <div className="border-t border-brand-category p-4">
-                        <div className="mb-3 flex flex-wrap gap-2">
-                          <select value={noteType} onChange={(e) => setNoteType(e.target.value as Note['note_type'])} className="rounded-lg border border-brand-category bg-brand-bg px-2 py-1.5 text-xs text-brand-text outline-none">
-                            <option value="note">הערה</option>
-                            <option value="message">הודעה</option>
-                            <option value="task">מטלה אישית</option>
-                          </select>
-                          <input
-                            placeholder="תוכן..."
-                            value={noteContent}
-                            onChange={(e) => setNoteContent(e.target.value)}
-                            className="min-w-[160px] flex-1 rounded-lg border border-brand-category bg-brand-bg px-2 py-1.5 text-xs text-brand-text outline-none"
-                          />
-                          <input
-                            type="date"
-                            value={noteDue}
-                            onChange={(e) => setNoteDue(e.target.value)}
-                            className="rounded-lg border border-brand-category bg-brand-bg px-2 py-1.5 text-xs text-brand-text outline-none"
-                          />
-                          <button
-                            onClick={() => addNote(s.id)}
-                            disabled={savingNote || !noteContent.trim()}
-                            className="rounded-lg bg-brand-name px-3 py-1.5 text-xs font-bold text-brand-text disabled:opacity-60"
-                          >
-                            שלח
-                          </button>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          {(notesByStudent[s.id] ?? []).map((n) => (
-                            <div key={n.id} className="flex items-start gap-2 rounded-lg bg-brand-bg p-2 text-xs">
-                              <Icon icon={NOTE_TYPE_ICONS[n.note_type]} width={14} className="mt-0.5 shrink-0 text-brand-textsoft" />
-                              <div>
-                                <span className="font-bold text-brand-text">{n.sender === 'student' ? 'הסטודנט' : NOTE_TYPE_LABELS[n.note_type]}: </span>
-                                <span className="text-brand-text">{n.content}</span>
-                                {n.due_date && <span className="mr-2 text-brand-textsoft">(עד {n.due_date})</span>}
-                              </div>
-                            </div>
-                          ))}
-                          {(notesByStudent[s.id] ?? []).length === 0 && <p className="text-center text-xs text-brand-textsoft">אין עדיין הערות לסטודנט הזה</p>}
-                        </div>
-                      </div>
+                    {s.statusNote && (
+                      <p className="mb-3 rounded-lg bg-brand-bg p-2 text-xs text-brand-text">
+                        <Icon icon="solar:chat-square-like-linear" width={12} className="ml-1 inline" />
+                        {s.statusNote}
+                      </p>
                     )}
+
+                    <div className="flex gap-2">
+                      <button onClick={() => setChatStudent(s)} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-brand-name py-2 text-xs font-bold text-brand-text">
+                        <Icon icon="solar:chat-round-dots-bold" width={14} />
+                        צ&apos;אט
+                      </button>
+                      {s.hasUnread && (
+                        <button onClick={() => markAsRead(s.id)} title="סמן כנקרא" className="rounded-lg bg-brand-bg px-2.5 py-2 text-brand-textsoft">
+                          <Icon icon="solar:check-read-linear" width={14} />
+                        </button>
+                      )}
+                      <button onClick={() => removeStudent(s.id)} title="הסר מהכיתה" className="rounded-lg bg-brand-bg px-2.5 py-2 text-red-500">
+                        <Icon icon="solar:user-minus-rounded-bold" width={14} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -493,6 +545,15 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
           </div>
         )}
       </main>
+
+      {chatStudent && (
+        <ChatModal
+          student={chatStudent}
+          classId={classId}
+          onClose={() => setChatStudent(null)}
+          onRead={() => setStudents((prev) => prev.map((s) => (s.id === chatStudent.id ? { ...s, hasUnread: false } : s)))}
+        />
+      )}
     </div>
   );
 }

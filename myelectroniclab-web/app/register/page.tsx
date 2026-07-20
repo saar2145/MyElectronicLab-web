@@ -1,9 +1,7 @@
-// Version: 1.2
-// Title: Registration Page | Change from v1.1: added the 9-icon avatar picker
-// (stored as profiles.avatar_icon via signUp metadata, see
-// supabase_schema_v1.2_avatar.sql); "הרשם כאן"/login link now uses
-// text-brand-linktext instead of text-brand-link, which was unreadable in dark
-// mode (dark text on dark card background). Important Data: self-managed
+// Version: 1.3
+// Title: Registration Page | Change from v1.2: avatar picker now shows all 27
+// icons (up from 9) in a dense "emoji keyboard" style grid instead of 9 large
+// labeled buttons - see lib/avatar-icons.ts v2.0. Important Data: self-managed
 // email/password auth only (no Google SSO). Collects all required fields per
 // spec (name, phone, email, gender, role, college, avatar). Mentor accounts
 // show a pending-approval message instead of redirecting straight into the site
@@ -159,7 +157,7 @@ export default function RegisterPage() {
 
           <div>
             <label className={labelClass}>תמונת פרופיל</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-7 gap-1.5 rounded-xl border border-brand-category bg-brand-bg p-2">
               {AVATAR_ICONS.map((a) => {
                 const selected = form.avatarIcon === a.key;
                 return (
@@ -168,14 +166,11 @@ export default function RegisterPage() {
                     type="button"
                     onClick={() => update('avatarIcon', a.key)}
                     title={a.label}
-                    className={`flex flex-col items-center gap-1 rounded-xl border-2 py-2.5 transition ${
-                      selected
-                        ? 'border-brand-linktext bg-brand-picture'
-                        : 'border-brand-category bg-brand-bg hover:border-brand-linktext/50'
+                    className={`flex aspect-square items-center justify-center rounded-lg transition ${
+                      selected ? 'bg-brand-picture ring-2 ring-brand-linktext' : 'hover:bg-brand-picture/50'
                     }`}
                   >
-                    <Icon icon={a.icon} width={26} className="text-brand-text" />
-                    <span className="text-[10px] text-brand-textsoft">{a.label}</span>
+                    <Icon icon={a.icon} width={18} className="text-brand-text" />
                   </button>
                 );
               })}
