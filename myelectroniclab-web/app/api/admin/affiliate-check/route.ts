@@ -1,20 +1,20 @@
-// Version: 1.0
-// Title: Admin Affiliate Check API Route | Important Data: GET returns the
-// most recent check per product (for the admin table). POST runs a fresh
-// check batch: for each product with a link, (1) follows redirects to get the
-// resolved URL + HTTP status - this alone catches dead/removed listings and
-// links that lost their affiliate tracking domain/param; (2) if a resolved
-// AliExpress item_id was found, calls the AliExpress Affiliate API
-// (lib/aliexpress-affiliate.ts) to confirm the live commission rate. Runs
-// products SEQUENTIALLY with a small delay between AliExpress API calls (not
-// Promise.all) - both to respect their rate limits and because a Vercel
-// serverless function has a timeout ceiling; for large catalogs this may need
-// chunking into multiple requests later (not handled yet - flagged in chat).
+// Version: 2.0
+// Title: Admin Affiliate Check API Route | Change from v1.0: step 2 now
+// mirrors the old GAS system exactly - step 1 (checkLinkEligibility) is
+// called on the product's ORIGINAL stored link (not a resolved URL - the
+// AliExpress API resolves it itself, exactly like the old
+// checkAliExpressLinkEligibility_ did with the raw sheet URL), and only if
+// step 1 says eligible does step 2 (fetchCommissionRate) run, using the item
+// id extracted from my own HTTP redirect-follow (kept as a cheap
+// pre-check for fully dead links before spending an AliExpress API call).
+// Important Data: GET returns the most recent check per product. Runs
+// products SEQUENTIALLY with a delay between AliExpress calls (rate limits +
+// serverless timeout ceiling; large catalogs may need chunking later).
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionToken } from '@/lib/admin-auth';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
-import { fetchAffiliateProductDetail, extractItemId } from '@/lib/aliexpress-affiliate';
+import { checkLinkEligibility, fetchCommissionRate, extractItemId } from '@/lib/aliexpress-affiliate';
 
 function requireAdmin(req: NextRequest): boolean {
   const token = req.cookies.get('admin_session')?.value;
@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = getSupabaseServerClient();
+  const trackingId = process.env.ALIEXPRESS_TRACKING_ID || 'default';
 
   const { productId } = await req.json().catch(() => ({ productId: null }));
 
@@ -78,21 +79,18 @@ export async function POST(req: NextRequest) {
 
     let httpStatus: number | null = null;
     let resolvedUrl: string | null = null;
-    let status: 'ok' | 'broken' | 'no_affiliate_tag' | 'rate_mismatch' | 'api_error' = 'broken';
     let itemId: string | null = null;
+    let status: 'ok' | 'broken' | 'no_affiliate_tag' | 'rate_mismatch' | 'api_error' = 'broken';
     let commissionRate: number | null = null;
     let details = '';
 
-    // שכבה 1: בריאות הקישור
+    // בדיקה מקדימה זולה: הקישור בכלל עונה? (לא קורא ל-API של AliExpress בשביל זה)
     try {
       const res = await fetch(product.link, { method: 'GET', redirect: 'follow' });
       httpStatus = res.status;
       resolvedUrl = res.url;
-
       if (res.status >= 200 && res.status < 400) {
-        const hasTracking = /s\.click\.aliexpress\.com|aff_fcid=|aff_platform=|sk=/.test(product.link) || /s\.click\.aliexpress\.com/.test(resolvedUrl);
         itemId = extractItemId(resolvedUrl);
-        status = hasTracking || itemId ? 'ok' : 'no_affiliate_tag';
       } else {
         status = 'broken';
         details = `HTTP ${res.status} מהקישור`;
@@ -102,16 +100,28 @@ export async function POST(req: NextRequest) {
       details = `שגיאת רשת: ${String(e)}`;
     }
 
-    // שכבה 2: אימות שיעור עמלה מול AliExpress (רק אם שכבה 1 עברה ויש item id)
-    if (status === 'ok' && itemId) {
-      const affResult = await fetchAffiliateProductDetail(itemId);
-      if (!affResult.ok) {
+    // שלב 1 (קובע): זכאות אמיתית - בדיוק כמו במערכת הישנה, על ה-URL המקורי
+    if (status !== 'broken') {
+      const eligibility = await checkLinkEligibility(product.link, trackingId);
+      await sleep(1100); // נימוס כלפי ApiCallLimit - כמו במערכת הישנה
+
+      if (eligibility.eligible === null) {
         status = 'api_error';
-        details = affResult.rawResponse.slice(0, 2000);
+        details = `${eligibility.apiError ?? 'unknown'}\n\n${(eligibility.raw ?? '').slice(0, 1500)}`;
+      } else if (eligibility.eligible === false) {
+        status = 'no_affiliate_tag';
+        details = 'הקישור עובד אבל לא זכאי לעמלה כרגע (AliExpress לא מחזיר promotion_link)';
+      } else if (itemId) {
+        // שלב 2 (מידע בלבד): אחוז עמלה, רק אם שלב 1 אישר זכאות
+        const rateInfo = await fetchCommissionRate(itemId);
+        await sleep(1100);
+        status = 'ok';
+        commissionRate = rateInfo.rate ? parseFloat(rateInfo.rate) : null;
+        if (!rateInfo.rate) details = `זכאי לעמלה אך לא הצלחתי לקבל אחוז מדויק.\n\n${(rateInfo.raw ?? '').slice(0, 1500)}`;
       } else {
-        commissionRate = affResult.commissionRate;
+        status = 'ok';
+        details = 'זכאי לעמלה, אך לא הצלחתי לחלץ item ID לבדיקת אחוז העמלה';
       }
-      await sleep(400); // נימוס כלפי ה-rate limit של AliExpress
     }
 
     await supabase.from('affiliate_link_checks').insert({
