@@ -1,20 +1,17 @@
-// Version: 2.1
-// Title: Admin Affiliate Check API Route | Change from v2.0: the step-0
-// pre-check fetch was returning "broken" for every product - almost
-// certainly AliExpress blocking a server request with no browser
-// User-Agent header (a very common anti-bot behavior, unrelated to the
-// AliExpress API signing fixed in v2.0 of lib/aliexpress-affiliate.ts).
-// Added a realistic User-Agent/Accept-Language to that fetch. Also: on any
-// 'broken' status, `details` now always includes the exact HTTP status or
-// exception text, so if this still fails the real cause is visible instead
-// of a bare label. Important Data: step 1 (checkLinkEligibility) is called
-// on the product's ORIGINAL stored link (AliExpress's own API resolves it -
-// exactly like the old checkAliExpressLinkEligibility_ did with the raw
-// sheet URL); step 2 (fetchCommissionRate) only runs if step 1 says
-// eligible, using the item id extracted from this pre-check's resolved URL.
-// Runs products SEQUENTIALLY with a delay between AliExpress calls (rate
-// limits + serverless timeout ceiling; large catalogs may need chunking
-// later).
+// Version: 2.2
+// Title: Admin Affiliate Check API Route | Change from v2.1: fixed a real
+// logic bug - `status` was initialized to 'broken' and never advanced on a
+// SUCCESSFUL pre-check (only the failure branches touched it), so
+// `if (status !== 'broken')` below always evaluated false and step 1/2
+// (the actual AliExpress calls) never ran at all, even for perfectly healthy
+// links - producing exactly what was reported: HTTP 200, status "broken",
+// empty details. Not an AliExpress/network issue - pure control-flow bug on
+// my end. Important Data: step 1 (checkLinkEligibility) is called on the
+// product's ORIGINAL stored link (AliExpress's own API resolves it); step 2
+// (fetchCommissionRate) only runs if step 1 says eligible, using the item id
+// extracted from the pre-check's resolved URL. Runs products SEQUENTIALLY
+// with a delay between AliExpress calls (rate limits + serverless timeout
+// ceiling; large catalogs may need chunking later).
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionToken } from '@/lib/admin-auth';
@@ -104,6 +101,7 @@ export async function POST(req: NextRequest) {
       resolvedUrl = res.url;
       if (res.status >= 200 && res.status < 400) {
         itemId = extractItemId(resolvedUrl);
+        status = 'ok'; // מתקדם מעבר ל'broken' ההתחלתי - זה מה שהיה חסר
       } else {
         status = 'broken';
         details = `HTTP ${res.status} מהקישור (${res.statusText || 'ללא הודעה'})`;
