@@ -1,10 +1,12 @@
-// Version: 1.0
-// Title: Join Class Page | Important Data: calls the join_class_by_code()
-// Postgres function (see supabase_schema_v1.6_mentor_classes.sql) via
-// supabase.rpc - this is intentional: students don't have SELECT access to
-// mentor_classes directly (that would leak every class's code), so joining
-// has to go through this SECURITY DEFINER function instead of a normal
-// insert.
+// Version: 1.1
+// Title: Join Class Page | Change from v1.0: shows the real RPC error message
+// instead of a generic string - same recurring lesson in this project (a
+// generic message hides RLS/permission/missing-object causes we actually need
+// to see). Important Data: calls the join_class_by_code() Postgres function
+// (see supabase_schema_v1.6_mentor_classes.sql) via supabase.rpc - this is
+// intentional: students don't have SELECT access to mentor_classes directly
+// (that would leak every class's code), so joining has to go through this
+// SECURITY DEFINER function instead of a normal insert.
 
 'use client';
 
@@ -37,7 +39,7 @@ export default function JoinClassPage() {
     setSubmitting(false);
 
     if (rpcError) {
-      setError('קוד לא תקין. בדוק עם המנחה שלך ונסה שוב.');
+      setError(rpcError.message);
       return;
     }
 
