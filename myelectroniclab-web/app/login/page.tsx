@@ -1,9 +1,8 @@
-// Version: 1.1
-// Title: Login Page | Change from v1.0: "הרשם כאן" link now uses
-// text-brand-linktext instead of text-brand-link, which was unreadable in dark
-// mode (dark text on dark card background). Important Data: email/password
-// sign-in via Supabase Auth only (no SSO). On success, proxy.ts keeps the
-// session cookie fresh on subsequent requests.
+// Version: 1.2
+// Title: Login Page | Change from v1.1: added "שכחתי סיסמה" link to
+// /forgot-password. Important Data: email/password sign-in via Supabase Auth
+// only (no SSO). On success, proxy.ts keeps the session cookie fresh on
+// subsequent requests.
 
 'use client';
 
@@ -75,6 +74,9 @@ export default function LoginPage() {
               className={inputClass}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
+            <a href="/forgot-password" className="mt-1 block text-left text-xs font-bold text-brand-linktext hover:underline">
+              שכחתי סיסמה
+            </a>
           </div>
 
           {error && <p className="text-center text-xs text-red-500">{error}</p>}
