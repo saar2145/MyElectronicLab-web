@@ -1,9 +1,8 @@
-// Version: 1.4
-// Title: User Menu (Header) | Change from v1.3: the class-related link for
-// students now checks membership (mentor_class_students, self-select RLS
-// policy) and swaps label/icon - "הצטרפות לכיתה" before joining, "הכיתה שלי"
-// after. Both point to /join-class, which itself branches on membership (see
-// that page's v1.2 notes). Important Data: client component placed in
+// Version: 1.5
+// Title: User Menu (Header) | Change from v1.4: "הכיתה שלי" now points
+// directly to /my-class (the dedicated class panel) instead of /join-class -
+// per the request that clicking it should land straight in the class, not an
+// intermediate summary screen. Important Data: client component placed in
 // AppShell's HeaderNav, next to the cart button - the header itself is
 // `sticky top-0`, so this avatar stays visible on scroll without extra
 // positioning. Reads the Supabase auth session client-side, then fetches the
@@ -121,7 +120,7 @@ export default function UserMenu() {
                   הפרויקט שלי
                 </a>
                 <a
-                  href="/join-class"
+                  href={hasClass ? '/my-class' : '/join-class'}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-brand-text hover:bg-brand-bg"
                 >
                   <Icon icon={hasClass ? 'solar:users-group-rounded-bold' : 'solar:users-group-two-rounded-bold'} width={18} />
