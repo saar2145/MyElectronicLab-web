@@ -1,10 +1,14 @@
-// Version: 1.0
-// Title: Mentor Dashboard | Important Data: gated to role==='mentor' AND
-// mentor_approved===true (checked client-side against profiles, which RLS
-// already restricts to the user's own row). Class creation generates a
-// join_code client-side (lib/join-code.ts) and retries once on the rare
-// unique-constraint collision. Each class card links to
-// /mentor/classes/[id] for the roster/assignments/notes detail view.
+// Version: 1.1
+// Title: Mentor Dashboard | Change from v1.0: class-creation error now shows
+// the real Supabase error message instead of a generic string - same lesson
+// as the registration debugging earlier in this project: a generic message
+// hides the actual cause (RLS check failure, missing table, etc). Important
+// Data: gated to role==='mentor' AND mentor_approved===true (checked
+// client-side against profiles, which RLS already restricts to the user's
+// own row). Class creation generates a join_code client-side
+// (lib/join-code.ts) and retries once on the rare unique-constraint
+// collision. Each class card links to /mentor/classes/[id] for the
+// roster/assignments/notes detail view.
 
 'use client';
 
@@ -99,7 +103,7 @@ export default function MentorDashboardPage() {
 
     setCreating(false);
     if (lastError) {
-      setError('שגיאה ביצירת הכיתה. נסה שוב.');
+      setError(lastError);
       return;
     }
     setNewName('');
