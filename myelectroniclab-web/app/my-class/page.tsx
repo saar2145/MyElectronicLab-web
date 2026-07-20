@@ -1,14 +1,17 @@
-// Version: 1.0
-// Title: My Class Page | Important Data: this is the direct destination for
-// "הכיתה שלי" in UserMenu (once a student has joined a class) - separate from
-// /my-project (personal milestones only) and /join-class (pure join form).
-// If the student is in multiple classes, a selector switches between them.
-// Task checkboxes write to assignment_completions (shared class assignments)
-// or call toggle_task_completion() RPC (personal tasks from personal_notes) -
-// never a direct UPDATE on personal_notes, see the SQL migration's comment on
-// why. Chat messages from the mentor are labeled with the mentor's actual
-// name (fetched via the new profiles_select_mentor_by_student RLS policy),
-// not the generic "הודעה" from before.
+// Version: 1.1
+// Title: My Class Page | Change from v1.0: opening the messages tab now calls
+// student_mark_class_read() (see supabase_schema_v1.14_student_read.sql) -
+// this is what clears the yellow/red dot on the header avatar in UserMenu.
+// Important Data: this is the direct destination for "הכיתה שלי" in UserMenu
+// (once a student has joined a class) - separate from /my-project (personal
+// milestones only) and /join-class (pure join form). If the student is in
+// multiple classes, a selector switches between them. Task checkboxes write
+// to assignment_completions (shared class assignments) or call
+// toggle_task_completion() RPC (personal tasks from personal_notes) - never a
+// direct UPDATE on personal_notes, see the SQL migration's comment on why.
+// Chat messages from the mentor are labeled with the mentor's actual name
+// (fetched via the new profiles_select_mentor_by_student RLS policy), not the
+// generic "הודעה" from before.
 
 'use client';
 
@@ -204,7 +207,11 @@ export default function MyClassPage() {
             מטלות
           </button>
           <button
-            onClick={() => setSection('messages')}
+            onClick={() => {
+              setSection('messages');
+              const supabase = getSupabaseAuthClient();
+              supabase.rpc('student_mark_class_read', { p_class_id: selectedId });
+            }}
             className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${section === 'messages' ? 'bg-brand-name text-brand-text' : 'bg-brand-cardbg text-brand-textsoft'}`}
           >
             <Icon icon="solar:chat-round-dots-bold" width={16} />

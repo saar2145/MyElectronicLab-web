@@ -1,7 +1,13 @@
-// Version: 3.1
-// Title: My Project Page | Change from v3.0: added a free-text status_note
-// field ("במשפט אחד - איפה אתה עומד") alongside the 8 fixed milestones - this
-// is shown prominently on the mentor's grid view. Important Data: one
+// Version: 4.0
+// Title: My Project Page | Change from v3.1: (1) the free-text status is now
+// a standalone, ALWAYS-VISIBLE textarea (no edit-mode toggle needed) titled
+// "סטטוס הפרויקט" - per the request, this is the single most important
+// element on the page (it's also the most important thing the mentor sees on
+// their grid). Saves on blur. (2) the 8 milestones are now a horizontal
+// X-axis timeline (numbered circles + connecting line, horizontally
+// scrollable if needed) instead of a long vertical list of cards - clicking a
+// step opens a small detail panel below for just that step (status + due
+// date) instead of showing all 8 expanded at once. Important Data: one
 // student_projects row per user (created on first visit here), with exactly 8
 // student_milestones auto-seeded by a DB trigger. Progress % is computed
 // client-side, not stored.
@@ -24,15 +30,17 @@ type Milestone = {
 };
 
 const STATUS_LABELS: Record<MilestoneStatus, string> = { not_started: 'טרם התחיל', in_progress: 'בתהליך', done: 'הושלם' };
-const STATUS_COLORS: Record<MilestoneStatus, string> = {
-  not_started: 'bg-brand-category text-brand-textsoft',
-  in_progress: 'bg-amber-500/15 text-amber-700',
-  done: 'bg-green-500/15 text-green-700',
-};
 
 function isOverdue(m: Milestone): boolean {
   if (!m.due_date || m.status === 'done') return false;
   return new Date(m.due_date) < new Date(new Date().toDateString());
+}
+
+function circleClasses(m: Milestone): string {
+  if (isOverdue(m)) return 'bg-red-500 text-white';
+  if (m.status === 'done') return 'bg-green-500 text-white';
+  if (m.status === 'in_progress') return 'bg-amber-400 text-white';
+  return 'bg-brand-category text-brand-textsoft';
 }
 
 export default function MyProjectPage() {
@@ -43,7 +51,8 @@ export default function MyProjectPage() {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [creating, setCreating] = useState(false);
-  const [editingInfo, setEditingInfo] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | null>(null);
 
   async function loadAll() {
     const supabase = getSupabaseAuthClient();
@@ -89,14 +98,12 @@ export default function MyProjectPage() {
     if (!error) await loadAll();
   }
 
-  async function saveInfo() {
+  async function saveStatusNote() {
     if (!project) return;
+    setStatusSaving(true);
     const supabase = getSupabaseAuthClient();
-    await supabase
-      .from('student_projects')
-      .update({ title: project.title, description: project.description, status_note: project.status_note })
-      .eq('id', project.id);
-    setEditingInfo(false);
+    await supabase.from('student_projects').update({ status_note: project.status_note }).eq('id', project.id);
+    setStatusSaving(false);
   }
 
   async function updateMilestone(id: string, patch: Partial<Pick<Milestone, 'status' | 'due_date'>>) {
@@ -158,6 +165,8 @@ export default function MyProjectPage() {
 
   const doneCount = milestones.filter((m) => m.status === 'done').length;
   const progress = milestones.length > 0 ? Math.round((doneCount / milestones.length) * 100) : 0;
+  const selected = milestones.find((m) => m.id === selectedMilestoneId) ?? null;
+  const selectedDef = selected ? MILESTONES.find((d) => d.key === selected.milestone_key) : null;
 
   return (
     <div className="min-h-screen bg-brand-bg p-4" dir="rtl">
@@ -167,95 +176,87 @@ export default function MyProjectPage() {
           חזרה לקטלוג
         </button>
 
-        <div className="mb-4 rounded-2xl bg-brand-cardbg p-6 shadow-lg">
-          {editingInfo ? (
-            <div className="flex flex-col gap-3">
-              <input
-                value={project.title}
-                onChange={(e) => setProject({ ...project, title: e.target.value })}
-                className="w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm font-bold text-brand-text outline-none"
-              />
-              <textarea
-                value={project.description}
-                onChange={(e) => setProject({ ...project, description: e.target.value })}
-                className="min-h-20 w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none"
-              />
-              <div>
-                <label className="mb-1 block text-xs font-bold text-brand-textsoft">איפה אני עומד עכשיו (במשפט אחד)</label>
-                <input
-                  value={project.status_note}
-                  onChange={(e) => setProject({ ...project, status_note: e.target.value })}
-                  placeholder="לדוגמה: תקוע על החיבור לחיישן, מחכה לתגובת המנחה"
-                  className="w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none"
-                />
-              </div>
-              <button onClick={saveInfo} className="self-start rounded-lg bg-brand-name px-4 py-1.5 text-xs font-bold text-brand-text">
-                שמור
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h1 className="mb-1 text-lg font-bold text-brand-text">{project.title || 'פרויקט הגמר שלי'}</h1>
-                {project.description && <p className="text-sm text-brand-textsoft">{project.description}</p>}
-                {project.status_note && (
-                  <p className="mt-2 rounded-lg bg-brand-bg px-3 py-2 text-xs font-bold text-brand-text">
-                    <Icon icon="solar:chat-square-like-linear" width={13} className="ml-1 inline" />
-                    {project.status_note}
-                  </p>
-                )}
-              </div>
-              <button onClick={() => setEditingInfo(true)} className="shrink-0 rounded-lg bg-brand-bg p-2 text-brand-textsoft">
-                <Icon icon="solar:pen-2-linear" width={16} />
-              </button>
-            </div>
-          )}
+        <h1 className="mb-1 text-lg font-bold text-brand-text">{project.title || 'פרויקט הגמר שלי'}</h1>
+        {project.description && <p className="mb-4 text-sm text-brand-textsoft">{project.description}</p>}
 
-          <div className="mt-4">
-            <div className="mb-1 flex items-center justify-between text-xs font-bold text-brand-textsoft">
-              <span>התקדמות</span>
-              <span>{progress}%</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-brand-category">
-              <div className="h-full rounded-full bg-brand-linktext transition-all" style={{ width: `${progress}%` }} />
-            </div>
+        {/* הכי חשוב בעמוד - תמיד גלוי, בלי מצב עריכה נפרד */}
+        <div className="mb-4 rounded-2xl border-2 border-brand-linktext bg-brand-cardbg p-5 shadow-lg">
+          <h2 className="mb-2 flex items-center gap-2 text-sm font-bold text-brand-text">
+            <Icon icon="solar:chat-square-like-bold" width={18} className="text-brand-linktext" />
+            סטטוס הפרויקט
+            {statusSaving && <span className="text-xs font-normal text-brand-textsoft">(שומר...)</span>}
+          </h2>
+          <textarea
+            value={project.status_note}
+            onChange={(e) => setProject({ ...project, status_note: e.target.value })}
+            onBlur={saveStatusNote}
+            placeholder="באיזה מצב אתה נמצא עכשיו? לדוגמה: תקוע על חיבור החיישן, מחכה לתגובת המנחה..."
+            className="min-h-20 w-full resize-none rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none focus:border-brand-linktext"
+          />
+        </div>
+
+        <div className="mb-4 rounded-2xl bg-brand-cardbg p-5 shadow-lg">
+          <div className="mb-1 flex items-center justify-between text-xs font-bold text-brand-textsoft">
+            <span>התקדמות</span>
+            <span>{progress}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-brand-category">
+            <div className="h-full rounded-full bg-brand-linktext transition-all" style={{ width: `${progress}%` }} />
           </div>
         </div>
 
-        <div className="rounded-2xl bg-brand-cardbg p-6 shadow-lg">
+        <div className="rounded-2xl bg-brand-cardbg p-5 shadow-lg">
           <h2 className="mb-4 text-sm font-bold text-brand-text">שלבי הפרויקט</h2>
-          <div className="flex flex-col gap-3">
-            {milestones.map((m) => {
+
+          <div className="mb-2 flex items-start overflow-x-auto pb-2">
+            {milestones.map((m, i) => {
               const def = MILESTONES.find((d) => d.key === m.milestone_key);
-              const overdue = isOverdue(m);
               return (
-                <div key={m.id} className={`rounded-xl border p-3 ${overdue ? 'border-red-400 bg-red-500/5' : 'border-brand-category'}`}>
-                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-sm font-bold text-brand-text">{def?.label ?? m.milestone_key}</span>
-                    <select
-                      value={m.status}
-                      onChange={(e) => updateMilestone(m.id, { status: e.target.value as MilestoneStatus })}
-                      className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS_COLORS[m.status]}`}
+                <div key={m.id} className="flex shrink-0 items-start">
+                  <button onClick={() => setSelectedMilestoneId(m.id)} className="flex w-16 flex-col items-center gap-1 px-1">
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition ${circleClasses(m)} ${
+                        selectedMilestoneId === m.id ? 'ring-2 ring-brand-linktext ring-offset-2 ring-offset-brand-cardbg' : ''
+                      }`}
                     >
-                      <option value="not_started">{STATUS_LABELS.not_started}</option>
-                      <option value="in_progress">{STATUS_LABELS.in_progress}</option>
-                      <option value="done">{STATUS_LABELS.done}</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Icon icon="solar:calendar-linear" width={14} className="text-brand-textsoft" />
-                    <input
-                      type="date"
-                      value={m.due_date ?? ''}
-                      onChange={(e) => updateMilestone(m.id, { due_date: e.target.value || null })}
-                      className="rounded-lg border border-brand-category bg-brand-bg px-2 py-1 text-xs text-brand-text outline-none"
-                    />
-                    {overdue && <span className="text-xs font-bold text-red-500">עבר תאריך היעד</span>}
-                  </div>
+                      {m.status === 'done' ? <Icon icon="solar:check-circle-bold" width={16} /> : i + 1}
+                    </div>
+                    <span className="text-center text-[10px] leading-tight text-brand-textsoft">{def?.label ?? m.milestone_key}</span>
+                  </button>
+                  {i < milestones.length - 1 && <div className="mt-4 h-0.5 w-6 shrink-0 bg-brand-category" />}
                 </div>
               );
             })}
           </div>
+
+          {selected && selectedDef ? (
+            <div className="mt-3 rounded-xl border border-brand-category p-3">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-bold text-brand-text">{selectedDef.label}</span>
+                <select
+                  value={selected.status}
+                  onChange={(e) => updateMilestone(selected.id, { status: e.target.value as MilestoneStatus })}
+                  className="rounded-full bg-brand-bg px-2.5 py-1 text-xs font-bold text-brand-text outline-none"
+                >
+                  <option value="not_started">{STATUS_LABELS.not_started}</option>
+                  <option value="in_progress">{STATUS_LABELS.in_progress}</option>
+                  <option value="done">{STATUS_LABELS.done}</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Icon icon="solar:calendar-linear" width={14} className="text-brand-textsoft" />
+                <input
+                  type="date"
+                  value={selected.due_date ?? ''}
+                  onChange={(e) => updateMilestone(selected.id, { due_date: e.target.value || null })}
+                  className="rounded-lg border border-brand-category bg-brand-bg px-2 py-1 text-xs text-brand-text outline-none"
+                />
+                {isOverdue(selected) && <span className="text-xs font-bold text-red-500">עבר תאריך היעד</span>}
+              </div>
+            </div>
+          ) : (
+            <p className="mt-3 text-center text-xs text-brand-textsoft">לחץ על שלב כדי לעדכן סטטוס ותאריך</p>
+          )}
         </div>
       </div>
     </div>
