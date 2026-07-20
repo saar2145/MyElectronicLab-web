@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = getSupabaseServerClient();
-  const trackingId = process.env.ALIEXPRESS_TRACKING_ID || 'default';
+  const trackingId = (process.env.ALIEXPRESS_TRACKING_ID || '').trim() || 'default';
 
   const { productId } = await req.json().catch(() => ({ productId: null }));
 

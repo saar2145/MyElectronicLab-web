@@ -1,25 +1,26 @@
-// Version: 2.0
-// Title: AliExpress Affiliate API Client | Change from v1.2: completely
-// rewritten by porting the OLD GAS system's working implementation
-// (checkAliExpressLinkEligibility_ / fetchAliExpressCommissionRate_ in
-// Code.gs v4.7), which the user confirmed actually reached the API
-// successfully (the only open issue there was commission % accuracy, never
-// IncompleteSignature). The real bugs in v1.0-v1.2: (1) timestamp must be
-// "yyyy-MM-dd HH:mm:ss" formatted in GMT (UTC) - not epoch milliseconds
-// (a different blog post's advice, which was wrong for this API) and not
-// GMT+8 (my own earlier wrong guess); (2) step 2 must call
-// aliexpress.affiliate.product.query, not aliexpress.affiliate.productdetail.get
-// (a method that likely doesn't exist). Important Data: TWO-STEP process,
-// exactly like the old system - step 1 (aliexpress.affiliate.link.generate,
-// keyed on the actual URL) determines eligibility for real (a category-level
-// guess was the old system's ORIGINAL bug, already fixed there); step 2
-// (aliexpress.affiliate.product.query) is informational-only for the
-// commission rate, called only if step 1 says eligible. Server-only - never
-// import from a client component (uses ALIEXPRESS_APP_SECRET).
+// Version: 2.1
+// Title: AliExpress Affiliate API Client | Change from v2.0: the ported logic
+// from the old GAS system is byte-for-byte equivalent (verified again) and
+// still produces IncompleteSignature - shifting suspicion to the env vars
+// themselves (stray whitespace/newline from copy-paste into Vercel, or not
+// set on all environments). Added: (1) .trim() on all three env vars
+// defensively; (2) the exact param string that gets signed (everything
+// EXCEPT the secret itself) is now included in error `raw` output, so a
+// mismatch against what you'd expect can be seen directly instead of
+// guessed at. Important Data: TWO-STEP process - step 1
+// (aliexpress.affiliate.link.generate, keyed on the actual URL) determines
+// eligibility for real; step 2 (aliexpress.affiliate.product.query) is
+// informational-only for the commission rate, called only if step 1 says
+// eligible. Server-only - never import from a client component (uses
+// ALIEXPRESS_APP_SECRET).
 
 import crypto from 'crypto';
 
 const API_URL = 'https://api-sg.aliexpress.com/sync';
+
+function envVar(name: string): string {
+  return (process.env[name] ?? '').trim();
+}
 
 function timestamp(): string {
   // בדיוק כמו במערכת הישנה: "yyyy-MM-dd HH:mm:ss" לפי GMT (UTC), לא epoch ms
@@ -28,16 +29,20 @@ function timestamp(): string {
   return `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
 }
 
-function sign(params: Record<string, string>, secret: string): string {
-  const signString = Object.keys(params)
+function buildSignString(params: Record<string, string>): string {
+  return Object.keys(params)
     .sort()
     .map((k) => `${k}${params[k]}`)
     .join('');
+}
+
+function sign(signString: string, secret: string): string {
   return crypto.createHmac('sha256', secret).update(signString, 'utf8').digest('hex').toUpperCase();
 }
 
-async function callApi(params: Record<string, string>, secret: string): Promise<{ json: unknown; raw: string } | null> {
-  const withSign = { ...params, sign: sign(params, secret) };
+async function callApi(params: Record<string, string>, secret: string): Promise<{ json: unknown; raw: string; signString: string } | null> {
+  const signString = buildSignString(params);
+  const withSign = { ...params, sign: sign(signString, secret) };
   const query = Object.entries(withSign)
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
     .join('&');
@@ -46,21 +51,26 @@ async function callApi(params: Record<string, string>, secret: string): Promise<
     const res = await fetch(`${API_URL}?${query}`, { method: 'GET' });
     const raw = await res.text();
     try {
-      return { json: JSON.parse(raw), raw };
+      return { json: JSON.parse(raw), raw, signString };
     } catch {
-      return { json: null, raw };
+      return { json: null, raw, signString };
     }
   } catch {
     return null;
   }
 }
 
+function diagnosticSuffix(signString: string, appKey: string, appSecretLen: number): string {
+  return `\n\n--- דיאגנוסטיקה (בלי הסוד עצמו) ---\napp_key: "${appKey}" (אורך: ${appKey.length})\nאורך app_secret: ${appSecretLen}\nמחרוזת שנחתמה: ${signString}`;
+}
+
 export type EligibilityResult = { eligible: boolean | null; apiError?: string; raw?: string };
 
 // שלב 1 (קובע): מנסה ליצור קישור שותפים אמיתי על ה-URL עצמו - זו בדיקת הזכאות האמיתית
-export async function checkLinkEligibility(sourceUrl: string, trackingId: string): Promise<EligibilityResult> {
-  const appKey = process.env.ALIEXPRESS_APP_KEY;
-  const appSecret = process.env.ALIEXPRESS_APP_SECRET;
+export async function checkLinkEligibility(sourceUrl: string, trackingIdInput: string): Promise<EligibilityResult> {
+  const appKey = envVar('ALIEXPRESS_APP_KEY');
+  const appSecret = envVar('ALIEXPRESS_APP_SECRET');
+  const trackingId = trackingIdInput.trim() || 'default';
   if (!appKey || !appSecret) return { eligible: null, apiError: 'Missing ALIEXPRESS_APP_KEY/APP_SECRET' };
 
   const params: Record<string, string> = {
@@ -72,23 +82,25 @@ export async function checkLinkEligibility(sourceUrl: string, trackingId: string
     format: 'json',
     promotion_link_type: '0',
     source_values: sourceUrl,
-    tracking_id: trackingId || 'default',
+    tracking_id: trackingId,
   };
 
   const result = await callApi(params, appSecret);
   if (!result) return { eligible: null, apiError: 'network error' };
 
   const json = result.json as Record<string, unknown> | null;
-  if (!json) return { eligible: null, apiError: 'unparseable response', raw: result.raw };
+  if (!json) return { eligible: null, apiError: 'unparseable response', raw: result.raw + diagnosticSuffix(result.signString, appKey, appSecret.length) };
 
   if (json.error_response) {
     const err = json.error_response as Record<string, unknown>;
-    return { eligible: null, apiError: String(err.code ?? 'unknown'), raw: result.raw };
+    return {
+      eligible: null,
+      apiError: String(err.code ?? 'unknown'),
+      raw: result.raw + diagnosticSuffix(result.signString, appKey, appSecret.length),
+    };
   }
 
-  // מבנה תשובה מקונן, בדיוק כמו ב-GAS הישן
-  const flat = result.raw;
-  const hasPromotionLink = /"promotion_link"\s*:\s*"[^"]+"/.test(flat);
+  const hasPromotionLink = /"promotion_link"\s*:\s*"[^"]+"/.test(result.raw);
   return { eligible: hasPromotionLink, raw: result.raw };
 }
 
@@ -96,8 +108,8 @@ export type CommissionResult = { rate: string | null; raw: string | null };
 
 // שלב 2 (מידע בלבד): אחוז עמלה - לא קובע זכאות, נקרא רק אחרי שלב 1
 export async function fetchCommissionRate(productId: string): Promise<CommissionResult> {
-  const appKey = process.env.ALIEXPRESS_APP_KEY;
-  const appSecret = process.env.ALIEXPRESS_APP_SECRET;
+  const appKey = envVar('ALIEXPRESS_APP_KEY');
+  const appSecret = envVar('ALIEXPRESS_APP_SECRET');
   if (!appKey || !appSecret) return { rate: null, raw: 'Missing ALIEXPRESS_APP_KEY/APP_SECRET' };
 
   const params: Record<string, string> = {
@@ -116,7 +128,9 @@ export async function fetchCommissionRate(productId: string): Promise<Commission
   if (!result) return { rate: null, raw: 'network error' };
 
   const json = result.json as Record<string, unknown> | null;
-  if (!json || json.error_response) return { rate: null, raw: result.raw };
+  if (!json || json.error_response) {
+    return { rate: null, raw: result.raw + diagnosticSuffix(result.signString, appKey, appSecret.length) };
+  }
 
   const commissionMatch = result.raw.match(/"commission_rate"\s*:\s*"?([0-9.]+)"?/);
   return { rate: commissionMatch ? `${commissionMatch[1]}%` : null, raw: result.raw };
