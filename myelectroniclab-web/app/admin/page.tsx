@@ -1,17 +1,24 @@
-// Version: 2.2
-// Title: Admin Dashboard | Change from v2.1: "פרטים" on the affiliate-check
-// table now shows whenever ANY check exists (not only when details is
-// non-empty - an empty string was hiding the button entirely), and always
-// includes the HTTP status + link as a fallback even if details itself is
-// blank. Important Data: client component - checks auth by attempting a GET
-// to /api/admin/tickets (401 → show login form). Session persists via
+// Version: 2.3
+// Title: Admin Dashboard | Change from v2.2: "בדיקת אפיליאט" redesigned as a
+// dashboard - stat cards (ok/not-supporting/broken/api-error/unchecked
+// counts), targeted batch buttons ("בדוק הכל" / "בדוק רק שלא נבדקו" / "בדוק
+// שוב לא-תומכים"), and a live progress bar while a batch runs. Runs
+// CLIENT-SIDE (one product per request, sequential loop in the browser) -
+// this was necessary to avoid Vercel serverless function timeouts on large
+// batches (the old single-POST-does-everything approach could run for
+// minutes), and it also means the check genuinely stops if the tab is closed
+// or navigated away - the UI says so explicitly rather than implying
+// background continuation that doesn't actually happen. The full product
+// list stays as a separate section below the dashboard, unchanged in
+// structure. Important Data: client component - checks auth by attempting a
+// GET to /api/admin/tickets (401 → show login form). Session persists via
 // httpOnly cookie. "הוספת מוצרים" requires picking an EXISTING category -
 // see the long comment in app/api/admin/products/route.ts for why (the
 // catalog's grouping is order-based, not a relational category_id).
 
 'use client';
 
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Icon } from '@iconify/react';
 
 type Ticket = {
@@ -654,11 +661,17 @@ type AffiliateProductRow = {
   check: { status: string; checked_at: string; commission_rate: number | null; http_status: number | null; details: string | null } | null;
 };
 
+type RunLabel = 'all' | 'pending' | 'not_supporting' | null;
+
 function AffiliateCheckSection() {
   const [rows, setRows] = useState<AffiliateProductRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [running, setRunning] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const [runLabel, setRunLabel] = useState<RunLabel>(null);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [lastResult, setLastResult] = useState<{ ok: number; notSupporting: number; broken: number; errors: number } | null>(null);
+  const stopRequested = useRef(false);
 
   async function load() {
     setLoading(true);
@@ -675,100 +688,204 @@ function AffiliateCheckSection() {
     load();
   }, []);
 
-  async function runAll() {
-    setRunning(true);
-    await fetch('/api/admin/affiliate-check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
-    setRunning(false);
+  const withLink = rows.filter((r) => r.link);
+  const okCount = withLink.filter((r) => r.check?.status === 'ok').length;
+  const notSupportingCount = withLink.filter((r) => r.check?.status === 'no_affiliate_tag').length;
+  const brokenCount = withLink.filter((r) => r.check?.status === 'broken').length;
+  const errorCount = withLink.filter((r) => r.check?.status === 'api_error').length;
+  const uncheckedCount = withLink.filter((r) => !r.check).length;
+
+  async function runBatch(label: RunLabel, targetIds: number[]) {
+    if (targetIds.length === 0) return;
+    stopRequested.current = false;
+    setRunLabel(label);
+    setProgress({ done: 0, total: targetIds.length });
+    setLastResult(null);
+
+    const outcome = { ok: 0, notSupporting: 0, broken: 0, errors: 0 };
+
+    for (let i = 0; i < targetIds.length; i++) {
+      if (stopRequested.current) break;
+      const res = await fetch('/api/admin/affiliate-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: targetIds[i] }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const status = json.results?.[0]?.status;
+        if (status === 'ok') outcome.ok++;
+        else if (status === 'no_affiliate_tag') outcome.notSupporting++;
+        else if (status === 'broken') outcome.broken++;
+        else outcome.errors++;
+      } else {
+        outcome.errors++;
+      }
+      setProgress({ done: i + 1, total: targetIds.length });
+    }
+
+    setRunLabel(null);
+    setLastResult(outcome);
     load();
   }
 
-  async function runOne(productId: number) {
-    setRunning(true);
-    await fetch('/api/admin/affiliate-check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId }) });
-    setRunning(false);
-    load();
+  function runAll() {
+    runBatch('all', withLink.map((r) => r.id));
   }
+  function runPending() {
+    runBatch('pending', withLink.filter((r) => !r.check).map((r) => r.id));
+  }
+  function runNotSupporting() {
+    runBatch(
+      'not_supporting',
+      withLink.filter((r) => r.check?.status === 'no_affiliate_tag').map((r) => r.id)
+    );
+  }
+
+  const running = runLabel !== null;
 
   return (
     <div>
-      <div className="mb-5 flex items-center justify-between">
-        <h1 className={sectionTitleClass}>
-          <Icon icon="solar:link-round-angle-bold" width={22} /> בדיקת קישורי אפיליאט
-        </h1>
-        <button onClick={runAll} disabled={running} className="flex items-center gap-1 rounded-full bg-brand-name px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-60">
-          <Icon icon="solar:refresh-bold" width={14} className={running ? 'animate-spin' : ''} />
-          {running ? 'בודק...' : 'בדוק הכל'}
-        </button>
-      </div>
-
-      <p className="mb-4 text-xs text-brand-textsoft">
-        שכבה 1 בודקת שהקישור בכלל עובד ועדיין נושא תג אפיליאט. שכבה 2 (רק אם שכבה 1 עברה) שואלת את AliExpress ישירות מה שיעור העמלה בפועל. ריצה מלאה יכולה לקחת זמן על קטלוג גדול.
-      </p>
+      <h1 className={sectionTitleClass}>
+        <Icon icon="solar:link-round-angle-bold" width={22} /> בדיקת קישורי אפיליאט
+      </h1>
 
       {loading ? (
         <p className="text-center text-brand-textsoft">טוען...</p>
-      ) : rows.length === 0 ? (
-        <p className="py-16 text-center text-brand-textsoft">אין מוצרים עם קישור</p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl bg-brand-cardbg shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-brand-category text-right text-brand-textsoft">
-                <th className="px-3 py-3">מוצר</th>
-                <th className="px-3 py-3">סטטוס</th>
-                <th className="px-3 py-3">עמלה</th>
-                <th className="px-3 py-3">נבדק לאחרונה</th>
-                <th className="px-3 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
-                const meta = r.check ? STATUS_META[r.check.status] : null;
-                return (
-                  <Fragment key={r.id}>
-                    <tr className="border-b border-brand-category/50 text-brand-text">
-                      <td className="px-3 py-3">{r.name}</td>
-                      <td className="px-3 py-3">
-                        {meta ? (
-                          <span className={`flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${meta.color}`}>
-                            <Icon icon={meta.icon} width={12} />
-                            {meta.label}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-brand-textsoft">עוד לא נבדק</span>
+        <>
+          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <div className={`${cardClass} text-center`}>
+              <div className="text-2xl font-bold text-green-600">{okCount}</div>
+              <div className="text-xs text-brand-textsoft">תומכים בעמלה</div>
+            </div>
+            <div className={`${cardClass} text-center`}>
+              <div className="text-2xl font-bold text-amber-600">{notSupportingCount}</div>
+              <div className="text-xs text-brand-textsoft">לא תומכים</div>
+            </div>
+            <div className={`${cardClass} text-center`}>
+              <div className="text-2xl font-bold text-red-600">{brokenCount}</div>
+              <div className="text-xs text-brand-textsoft">שבורים</div>
+            </div>
+            <div className={`${cardClass} text-center`}>
+              <div className="text-2xl font-bold text-brand-textsoft">{errorCount}</div>
+              <div className="text-xs text-brand-textsoft">שגיאת API</div>
+            </div>
+            <div className={`${cardClass} text-center`}>
+              <div className="text-2xl font-bold text-brand-text">{uncheckedCount}</div>
+              <div className="text-xs text-brand-textsoft">לא נבדקו</div>
+            </div>
+          </div>
+
+          <div className={`${cardClass} mb-5`}>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={runAll} disabled={running} className="rounded-full bg-brand-name px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-60">
+                בדוק את כל המוצרים ({withLink.length})
+              </button>
+              <button onClick={runPending} disabled={running || uncheckedCount === 0} className="rounded-full bg-brand-picture px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-60">
+                בדוק רק מוצרים שלא נבדקו ({uncheckedCount})
+              </button>
+              <button onClick={runNotSupporting} disabled={running || notSupportingCount === 0} className="rounded-full bg-amber-500/15 px-4 py-2 text-sm font-bold text-amber-700 disabled:opacity-60">
+                בדוק שוב מוצרים שלא תומכים ({notSupportingCount})
+              </button>
+            </div>
+
+            {running && (
+              <div className="mt-4">
+                <div className="mb-1 flex items-center justify-between text-xs font-bold text-brand-textsoft">
+                  <span>בודק... {progress.done}/{progress.total}</span>
+                  <button onClick={() => (stopRequested.current = true)} className="text-red-500 hover:underline">
+                    עצור
+                  </button>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-brand-category">
+                  <div className="h-full rounded-full bg-brand-linktext transition-all" style={{ width: `${(progress.done / progress.total) * 100}%` }} />
+                </div>
+                <p className="mt-2 text-xs text-brand-textsoft">
+                  ⚠️ הבדיקה רצה מהדפדפן שלך - אם תסגור את הטאב הזה או תעבור לאתר אחר, היא תיעצר. השאר את הטאב פתוח עד שתראה הודעת סיום.
+                </p>
+              </div>
+            )}
+
+            {!running && lastResult && (
+              <div className="mt-4 rounded-xl bg-brand-bg p-3 text-sm text-brand-text">
+                ✅ הבדיקה הושלמה! תקינים: {lastResult.ok} | לא תומכים: {lastResult.notSupporting} | שבורים: {lastResult.broken}
+                {lastResult.errors > 0 && ` | שגיאות: ${lastResult.errors}`}
+              </div>
+            )}
+          </div>
+
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-bold text-brand-text">רשימה מלאה</h2>
+            <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm">
+              <Icon icon="solar:restart-bold" width={14} /> רענון
+            </button>
+          </div>
+
+          {rows.length === 0 ? (
+            <p className="py-16 text-center text-brand-textsoft">אין מוצרים עם קישור</p>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl bg-brand-cardbg shadow-sm">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-brand-category text-right text-brand-textsoft">
+                    <th className="px-3 py-3">מוצר</th>
+                    <th className="px-3 py-3">סטטוס</th>
+                    <th className="px-3 py-3">עמלה</th>
+                    <th className="px-3 py-3">נבדק לאחרונה</th>
+                    <th className="px-3 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => {
+                    const meta = r.check ? STATUS_META[r.check.status] : null;
+                    return (
+                      <Fragment key={r.id}>
+                        <tr className="border-b border-brand-category/50 text-brand-text">
+                          <td className="px-3 py-3">{r.name}</td>
+                          <td className="px-3 py-3">
+                            {meta ? (
+                              <span className={`flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${meta.color}`}>
+                                <Icon icon={meta.icon} width={12} />
+                                {meta.label}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-brand-textsoft">עוד לא נבדק</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-xs">{r.check?.commission_rate != null ? `${r.check.commission_rate}%` : '—'}</td>
+                          <td className="px-3 py-3 text-xs">{r.check ? new Date(r.check.checked_at).toLocaleString('he-IL') : '—'}</td>
+                          <td className="px-3 py-3">
+                            <div className="flex gap-2">
+                              <button onClick={() => runBatch('all', [r.id])} disabled={running} className="rounded-lg bg-brand-bg px-2.5 py-1.5 text-xs font-bold text-brand-text disabled:opacity-60">
+                                בדוק שוב
+                              </button>
+                              {r.check && (
+                                <button onClick={() => setExpandedId(expandedId === r.id ? null : r.id)} className="rounded-lg bg-brand-bg px-2.5 py-1.5 text-xs font-bold text-brand-textsoft">
+                                  פרטים
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                        {expandedId === r.id && r.check && (
+                          <tr>
+                            <td colSpan={5} className="bg-brand-bg px-3 py-3">
+                              <div className="mb-1 text-[10px] text-brand-textsoft">
+                                HTTP status: {r.check.http_status ?? '—'} | קישור: {r.link ?? '—'}
+                              </div>
+                              <pre className="max-h-40 overflow-auto whitespace-pre-wrap text-[10px] text-brand-textsoft">{r.check.details || '(אין פרטים נוספים - ריק)'}</pre>
+                            </td>
+                          </tr>
                         )}
-                      </td>
-                      <td className="px-3 py-3 text-xs">{r.check?.commission_rate != null ? `${r.check.commission_rate}%` : '—'}</td>
-                      <td className="px-3 py-3 text-xs">{r.check ? new Date(r.check.checked_at).toLocaleString('he-IL') : '—'}</td>
-                      <td className="px-3 py-3">
-                        <div className="flex gap-2">
-                          <button onClick={() => runOne(r.id)} disabled={running} className="rounded-lg bg-brand-bg px-2.5 py-1.5 text-xs font-bold text-brand-text disabled:opacity-60">
-                            בדוק שוב
-                          </button>
-                          {r.check && (
-                            <button onClick={() => setExpandedId(expandedId === r.id ? null : r.id)} className="rounded-lg bg-brand-bg px-2.5 py-1.5 text-xs font-bold text-brand-textsoft">
-                              פרטים
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                    {expandedId === r.id && r.check && (
-                      <tr>
-                        <td colSpan={5} className="bg-brand-bg px-3 py-3">
-                          <div className="mb-1 text-[10px] text-brand-textsoft">
-                            HTTP status: {r.check.http_status ?? '—'} | קישור: {r.link ?? '—'}
-                          </div>
-                          <pre className="max-h-40 overflow-auto whitespace-pre-wrap text-[10px] text-brand-textsoft">{r.check.details || '(אין פרטים נוספים - ריק)'}</pre>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
