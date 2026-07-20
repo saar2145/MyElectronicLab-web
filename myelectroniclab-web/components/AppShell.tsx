@@ -1,12 +1,13 @@
-// Version: 2.2
-// Title: App Shell | Change from v2.1: Banner moved from its own flex-col row
-// into the SAME row as HeaderNav's buttons - absolutely centered over the gap
-// between the "קטלוג" button and the "עגלה"+UserMenu group, instead of
-// stacking below them. This is what the user meant by "the header gap" (found
-// via DevTools element inspection) - it wasn't a CSS bug, it was flex-col
-// stacking every header row including the banner. Important Data: full
-// integration - banner, theme toggle, FAB group (chat/ticket/about), all
-// modals, refresh via router.refresh().
+// Version: 2.3
+// Title: App Shell | Change from v2.2: the nav row's height was defined only
+// by the buttons (~56px), while the centered banner is taller than that -
+// so it overflowed the row and "ate" its own margin into that overflow,
+// producing zero visible gap (my-2 on Banner had no visible effect - see chat).
+// Fix: give the row an explicit min-height at each breakpoint, comfortably
+// taller than the banner + its margin, so centering has real room to work
+// with and the gap actually renders. Important Data: full integration -
+// banner, theme toggle, FAB group (chat/ticket/about), all modals, refresh via
+// router.refresh().
 
 'use client';
 
@@ -36,7 +37,7 @@ function HeaderNav({ setView }: { setView: (v: 'catalog' | 'cart') => void }) {
     'flex shrink-0 items-center gap-2 rounded-full bg-brand-cardbg px-4 py-3 text-base font-bold text-brand-text shadow-md transition hover:brightness-95 sm:px-6 sm:text-lg';
 
   return (
-    <div className="relative flex items-center justify-between gap-2">
+    <div className="relative flex min-h-[72px] items-center justify-between gap-2 sm:min-h-[92px] md:min-h-[118px]">
       <button onClick={() => setView('catalog')} className={btnClass}>
         <Icon icon="solar:book-2-bold" width={22} />
         <span>קטלוג</span>
