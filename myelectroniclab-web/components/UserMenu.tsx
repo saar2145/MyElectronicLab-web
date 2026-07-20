@@ -1,13 +1,13 @@
-// Version: 1.1
-// Title: User Menu (Header) | Change from v1.0: dropdown now includes a link
-// to /profile (the "logo always visible in a corner + a place to see all
-// their details" ask). Important Data: client component placed in AppShell's
-// HeaderNav, next to the cart button - the header itself is `sticky top-0`,
-// so this avatar stays visible on scroll without extra positioning. Reads the
-// Supabase auth session client-side, then fetches the matching profiles row
-// (full_name, avatar_icon) - RLS already permits a user to select their own
-// row (see supabase_schema_v1.1_auth.sql). Subscribes to onAuthStateChange so
-// the menu updates immediately after login/logout without a full page reload.
+// Version: 1.2
+// Title: User Menu (Header) | Change from v1.1: dropdown now also links to
+// /my-project (the student final-project tracker). Important Data: client
+// component placed in AppShell's HeaderNav, next to the cart button - the
+// header itself is `sticky top-0`, so this avatar stays visible on scroll
+// without extra positioning. Reads the Supabase auth session client-side,
+// then fetches the matching profiles row (full_name, avatar_icon) - RLS
+// already permits a user to select their own row (see
+// supabase_schema_v1.1_auth.sql). Subscribes to onAuthStateChange so the menu
+// updates immediately after login/logout without a full page reload.
 
 'use client';
 
@@ -98,6 +98,13 @@ export default function UserMenu() {
             >
               <Icon icon="solar:user-id-bold" width={18} />
               הפרופיל שלי
+            </a>
+            <a
+              href="/my-project"
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-brand-text hover:bg-brand-bg"
+            >
+              <Icon icon="solar:flag-bold" width={18} />
+              הפרויקט שלי
             </a>
             <button
               onClick={handleSignOut}
