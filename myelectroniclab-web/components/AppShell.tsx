@@ -1,18 +1,15 @@
-// Version: 2.3
-// Title: App Shell | Change from v2.2: the nav row's height was defined only
-// by the buttons (~56px), while the centered banner is taller than that -
-// so it overflowed the row and "ate" its own margin into that overflow,
-// producing zero visible gap (my-2 on Banner had no visible effect - see chat).
-// Fix: give the row an explicit min-height at each breakpoint, comfortably
-// taller than the banner + its margin, so centering has real room to work
-// with and the gap actually renders. Important Data: full integration -
-// banner, theme toggle, FAB group (chat/ticket/about), all modals, refresh via
+// Version: 2.4
+// Title: App Shell | Change from v2.3: reads ?product=ID on mount and opens
+// that product's modal automatically - this is what makes ProductModal's new
+// "העתק קישור" (share link) button actually work; without this the copied
+// link did nothing when visited. Important Data: full integration - banner,
+// theme toggle, FAB group (chat/ticket/about), all modals, refresh via
 // router.refresh().
 
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import { ProductRow } from '@/lib/supabase';
 import { groupCatalog, searchCatalog, GroupedProduct } from '@/lib/catalog';
@@ -68,6 +65,7 @@ function HeaderNav({ setView }: { setView: (v: 'catalog' | 'cart') => void }) {
 
 function ShellInner({ rows }: { rows: ProductRow[] }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [view, setView] = useState<'catalog' | 'cart'>('catalog');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<GroupedProduct | null>(null);
@@ -91,6 +89,15 @@ function ShellInner({ rows }: { rows: ProductRow[] }) {
     () => rows.filter((r): r is GroupedProduct => r.row_type === 'product'),
     [rows]
   );
+
+  // פותח אוטומטית מוצר שהגיע דרך קישור משותף (?product=ID, ראה ProductModal "העתק קישור")
+  useEffect(() => {
+    const productId = searchParams.get('product');
+    if (!productId) return;
+    const found = allProducts.find((p) => String(p.id) === productId);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- תגובה מדעת ל-query param חיצוני, לא לולאת רינדור
+    if (found) setSelected(found);
+  }, [searchParams, allProducts]);
 
   const allCategories = useMemo(() => groupCatalog(rows), [rows]);
   const visibleCategories = useMemo(

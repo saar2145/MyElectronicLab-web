@@ -1,6 +1,13 @@
-// Version: 2.0
-// Title: Product Modal | Important Data: Iconify icons (majesticons:open-line for
-// buy, solar:link-bold for related), dark-mode aware background.
+// Version: 3.0
+// Title: Product Modal | Change from v2.0: matches the legacy (Index.html/GAS)
+// reference screenshot more closely - (1) close button moved from top-right to
+// top-left (reference shows the X on the left edge of the image); (2) added a
+// third button, "העתק קישור" - copies a shareable deep link (?product=<id>)
+// to this specific product, distinct from "לקנייה" (the external purchase
+// link) and "הוסף לעגלה"; (3) image container background is plain white (not
+// theme-dependent bg-brand-picture) - matches how the reference shows product
+// photos on white regardless of dark/light mode. Important Data: Iconify
+// icons (majesticons:open-line for buy, solar:link-bold for related).
 
 'use client';
 
@@ -23,6 +30,7 @@ export default function ProductModal({
 }) {
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const img = cloudinaryTransform(product.image_url, 'f_auto,q_auto,w_900');
 
@@ -46,6 +54,13 @@ export default function ProductModal({
     setTimeout(() => setAdded(false), 1200);
   }
 
+  function handleCopyLink() {
+    const url = `${window.location.origin}/?product=${product.id}`;
+    navigator.clipboard.writeText(url);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 1500);
+  }
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
@@ -55,10 +70,10 @@ export default function ProductModal({
         className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-brand-cardbg shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative flex aspect-square items-center justify-center bg-brand-picture">
+        <div className="relative flex aspect-square items-center justify-center bg-white">
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/20 text-white hover:bg-black/30"
+            className="absolute top-3 left-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/20 text-white hover:bg-black/30"
           >
             ✕
           </button>
@@ -71,15 +86,18 @@ export default function ProductModal({
         </div>
 
         <div className="flex flex-col gap-3 p-5">
-          <h2 className="text-lg font-bold text-brand-text">{product.name}</h2>
+          <div className="rounded-lg bg-brand-name px-3 py-2.5 text-center text-base font-bold text-brand-text">
+            {product.name}
+          </div>
 
           {product.model && (
-            <div className="w-fit rounded-lg bg-brand-model px-3 py-1.5 text-sm text-brand-text">
+            <div className="rounded-lg bg-brand-model px-3 py-2 text-center text-sm text-brand-text">
               {product.model}
             </div>
           )}
 
           <div className="flex items-center justify-between">
+            <span className="font-mono text-xs text-brand-textsoft/60">ID : #{product.id}</span>
             {product.price !== null ? (
               <span className="rounded-lg bg-brand-price px-3 py-1.5 text-base font-bold text-brand-text">
                 ₪{product.price}
@@ -87,9 +105,6 @@ export default function ProductModal({
             ) : (
               <span />
             )}
-            <span className="font-mono text-xs text-brand-textsoft/40">
-              ID : #{product.id}
-            </span>
           </div>
 
           {product.description && (
@@ -98,25 +113,39 @@ export default function ProductModal({
             </p>
           )}
 
-          <div className="mt-2 flex gap-2">
-            {product.link && (
-              <a
-                href={product.link}
-                target="_blank"
-                rel="noopener noreferrer sponsored"
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-link py-2.5 text-sm font-bold text-brand-text hover:brightness-95"
-              >
-                <Icon icon="majesticons:open-line" width={16} />
-                לקנייה
-              </a>
-            )}
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <button
+              onClick={handleCopyLink}
+              className="flex flex-col items-center justify-center gap-1 rounded-xl py-2.5 text-xs font-bold text-white transition hover:brightness-110"
+              style={{ background: 'var(--header-grad-from)' }}
+            >
+              <Icon icon={linkCopied ? 'solar:check-circle-bold' : 'solar:copy-bold'} width={16} />
+              {linkCopied ? 'הועתק!' : 'העתק קישור'}
+            </button>
+
             <button
               onClick={handleAddToCart}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-name py-2.5 text-sm font-bold text-brand-text transition hover:brightness-95"
+              className="flex flex-col items-center justify-center gap-1 rounded-xl py-2.5 text-xs font-bold text-white transition hover:brightness-110"
+              style={{ background: 'var(--header-grad-from)' }}
             >
               <Icon icon={added ? 'solar:check-circle-bold' : 'solar:cart-plus-bold'} width={16} />
               {added ? 'נוסף!' : 'הוסף לעגלה'}
             </button>
+
+            {product.link ? (
+              <a
+                href={product.link}
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                className="flex flex-col items-center justify-center gap-1 rounded-xl py-2.5 text-xs font-bold text-white transition hover:brightness-110"
+                style={{ background: 'var(--header-grad-from)' }}
+              >
+                <Icon icon="majesticons:open-line" width={16} />
+                לקנייה
+              </a>
+            ) : (
+              <span />
+            )}
           </div>
 
           {relatedProducts.length > 0 && (
@@ -132,9 +161,9 @@ export default function ProductModal({
                     <button
                       key={rp.id}
                       onClick={() => onSelectProduct(rp)}
-                      className="flex flex-col overflow-hidden rounded-lg bg-brand-bg text-right ring-1 ring-black/5 hover:ring-brand-link"
+                      className="flex flex-col overflow-hidden rounded-lg bg-white text-right ring-1 ring-black/5 hover:ring-brand-link"
                     >
-                      <div className="flex aspect-square items-center justify-center overflow-hidden bg-brand-picture">
+                      <div className="flex aspect-square items-center justify-center overflow-hidden bg-white">
                         {rImg ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -147,7 +176,7 @@ export default function ProductModal({
                           <Icon icon="solar:box-bold" width={18} className="opacity-30" />
                         )}
                       </div>
-                      <div className="truncate p-1.5 text-[11px] font-semibold text-brand-text">
+                      <div className="truncate bg-brand-bg p-1.5 text-[11px] font-semibold text-brand-text">
                         {rp.name}
                       </div>
                     </button>

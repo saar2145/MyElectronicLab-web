@@ -1,7 +1,13 @@
-// Version: 3.0
-// Title: Product Card | Important Data: Iconify icons (solar:cart-plus-bold /
-// solar:check-circle-bold / solar:gallery-broken-bold) replacing emojis, dark-mode
-// aware background (bg-brand-cardbg).
+// Version: 4.0
+// Title: Product Card | Change from v3.0: rebuilt to match the legacy
+// (Index.html/GAS) reference screenshots - the card was missing a "לקנייה"
+// (buy/external link) button entirely, only having a short "הוסף" add-to-cart
+// button sharing a row with the price. Now: row 1 is the buy-link button +
+// price badge, row 2 is a full-width "הוסף לעגלה" button, matching the
+// reference exactly. Important Data: Iconify icons, dark-mode aware
+// background (bg-brand-cardbg). Buy/add buttons use --header-grad-from as a
+// solid color (matches the reference's dark navy buttons - no existing brand
+// token was that dark).
 
 'use client';
 
@@ -48,7 +54,7 @@ export default function ProductCard({
         </div>
       )}
 
-      <div className="flex aspect-square items-center justify-center overflow-hidden bg-brand-picture">
+      <div className="flex aspect-square items-center justify-center overflow-hidden bg-white">
         {img ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -74,19 +80,36 @@ export default function ProductCard({
         )}
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+          {product.link ? (
+            <a
+              href={product.link}
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition hover:brightness-110"
+              style={{ background: 'var(--header-grad-from)' }}
+            >
+              <Icon icon="majesticons:open-line" width={13} />
+              לקנייה
+            </a>
+          ) : (
+            <span />
+          )}
           {product.price !== null && (
             <span className="rounded-lg bg-brand-price px-3 py-1.5 text-sm font-bold text-brand-text">
               ₪{product.price}
             </span>
           )}
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-1 rounded-lg bg-brand-link px-3 py-1.5 text-xs font-bold text-brand-text transition hover:brightness-95"
-          >
-            <Icon icon="solar:cart-plus-bold" width={14} />
-            הוסף
-          </button>
         </div>
+
+        <button
+          onClick={handleAdd}
+          className="flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-bold text-white transition hover:brightness-110"
+          style={{ background: 'var(--header-grad-from)' }}
+        >
+          <Icon icon="solar:cart-plus-bold" width={16} />
+          הוסף לעגלה
+        </button>
       </div>
     </div>
   );
