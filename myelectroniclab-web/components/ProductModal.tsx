@@ -1,13 +1,12 @@
-// Version: 3.0
-// Title: Product Modal | Change from v2.0: matches the legacy (Index.html/GAS)
-// reference screenshot more closely - (1) close button moved from top-right to
-// top-left (reference shows the X on the left edge of the image); (2) added a
-// third button, "העתק קישור" - copies a shareable deep link (?product=<id>)
-// to this specific product, distinct from "לקנייה" (the external purchase
-// link) and "הוסף לעגלה"; (3) image container background is plain white (not
-// theme-dependent bg-brand-picture) - matches how the reference shows product
-// photos on white regardless of dark/light mode. Important Data: Iconify
-// icons (majesticons:open-line for buy, solar:link-bold for related).
+// Version: 3.1
+// Title: Product Modal | Change from v3.0: swapped price/ID order - price now
+// on the right, ID moved into a small subtle gray rounded box on the left
+// (was a bare mono-font span). Important Data: close button top-left; the
+// "העתק קישור" button copies a shareable deep link (?product=<id>) to this
+// specific product, distinct from "לקנייה" (external purchase link) and
+// "הוסף לעגלה"; image container background is plain white (not theme-
+// dependent). Iconify icons (majesticons:open-line for buy, solar:link-bold
+// for related).
 
 'use client';
 
@@ -97,7 +96,6 @@ export default function ProductModal({
           )}
 
           <div className="flex items-center justify-between">
-            <span className="font-mono text-xs text-brand-textsoft/60">ID : #{product.id}</span>
             {product.price !== null ? (
               <span className="rounded-lg bg-brand-price px-3 py-1.5 text-base font-bold text-brand-text">
                 ₪{product.price}
@@ -105,6 +103,9 @@ export default function ProductModal({
             ) : (
               <span />
             )}
+            <span className="rounded-md bg-brand-category/40 px-2.5 py-1 font-mono text-xs text-brand-textsoft/70">
+              ID : #{product.id}
+            </span>
           </div>
 
           {product.description && (

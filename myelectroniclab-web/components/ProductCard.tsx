@@ -1,13 +1,10 @@
-// Version: 4.0
-// Title: Product Card | Change from v3.0: rebuilt to match the legacy
-// (Index.html/GAS) reference screenshots - the card was missing a "לקנייה"
-// (buy/external link) button entirely, only having a short "הוסף" add-to-cart
-// button sharing a row with the price. Now: row 1 is the buy-link button +
-// price badge, row 2 is a full-width "הוסף לעגלה" button, matching the
-// reference exactly. Important Data: Iconify icons, dark-mode aware
-// background (bg-brand-cardbg). Buy/add buttons use --header-grad-from as a
-// solid color (matches the reference's dark navy buttons - no existing brand
-// token was that dark).
+// Version: 4.1
+// Title: Product Card | Change from v4.0: swapped the price/buy-link order in
+// the row - price now renders on the right, buy button on the left (was
+// reversed). Important Data: Iconify icons, dark-mode aware background
+// (bg-brand-cardbg). Buy/add buttons use --header-grad-from as a solid color
+// (matches the reference's dark navy buttons - no existing brand token was
+// that dark).
 
 'use client';
 
@@ -80,7 +77,14 @@ export default function ProductCard({
         )}
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-          {product.link ? (
+          {product.price !== null ? (
+            <span className="rounded-lg bg-brand-price px-3 py-1.5 text-sm font-bold text-brand-text">
+              ₪{product.price}
+            </span>
+          ) : (
+            <span />
+          )}
+          {product.link && (
             <a
               href={product.link}
               target="_blank"
@@ -92,13 +96,6 @@ export default function ProductCard({
               <Icon icon="majesticons:open-line" width={13} />
               לקנייה
             </a>
-          ) : (
-            <span />
-          )}
-          {product.price !== null && (
-            <span className="rounded-lg bg-brand-price px-3 py-1.5 text-sm font-bold text-brand-text">
-              ₪{product.price}
-            </span>
           )}
         </div>
 
