@@ -1,12 +1,14 @@
-// Version: 1.0
-// Title: Mentor Class Detail | Important Data: relies on the mentor-read RLS
-// policies added in supabase_schema_v1.6_mentor_classes.sql (profiles,
-// student_projects, student_milestones SELECT policies scoped to "students in
-// my classes"). Roster + progress is built with separate queries (not
+// Version: 2.0
+// Title: Mentor Class Detail | Change from v1.0: restructured into a sidebar
+// dashboard (matching /admin's pattern) with two sections - "רשימת סטודנטים"
+// (roster + per-student notes, now shows phone instead of email per request)
+// and "מטלות כיתתיות" (assignments, unchanged logic) - instead of everything
+// stacked on one screen. Important Data: relies on the mentor-read RLS
+// policies from supabase_schema_v1.6_mentor_classes.sql (profiles,
+// student_projects, student_milestones SELECT scoped to "students in my
+// classes"). Roster + progress is built with separate queries (not
 // PostgREST FK-embedding) since mentor_class_students.student_id references
 // auth.users, not public.profiles, so there's no FK for embedding to use.
-// Per-student notes panel toggles inline per row rather than a separate route,
-// to keep everything on one screen.
 
 'use client';
 
@@ -16,9 +18,9 @@ import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
 
 type ClassInfo = { id: string; class_name: string; join_code: string };
-type StudentRow = { id: string; full_name: string; email: string; progress: number };
+type StudentRow = { id: string; full_name: string; phone: string; progress: number };
 type Assignment = { id: string; title: string; description: string; due_date: string | null; created_at: string };
-type Note = { id: string; note_type: 'note' | 'message' | 'task'; content: string; due_date: string | null; created_at: string };
+type Note = { id: string; note_type: 'note' | 'message' | 'task'; content: string; due_date: string | null; created_at: string; sender: 'mentor' | 'student' };
 
 const NOTE_TYPE_LABELS: Record<Note['note_type'], string> = { note: 'הערה', message: 'הודעה', task: 'מטלה אישית' };
 const NOTE_TYPE_ICONS: Record<Note['note_type'], string> = {
@@ -27,9 +29,12 @@ const NOTE_TYPE_ICONS: Record<Note['note_type'], string> = {
   task: 'solar:checklist-minimalistic-bold',
 };
 
+type Section = 'students' | 'assignments';
+
 export default function MentorClassDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: classId } = usePromise(params);
   const router = useRouter();
+  const [section, setSection] = useState<Section>('students');
 
   const [cls, setCls] = useState<ClassInfo | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
@@ -64,23 +69,13 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
     }
     setCls(classRow);
 
-    const { data: roster } = await supabase
-      .from('mentor_class_students')
-      .select('student_id')
-      .eq('class_id', classId);
-
+    const { data: roster } = await supabase.from('mentor_class_students').select('student_id').eq('class_id', classId);
     const studentIds = (roster ?? []).map((r) => r.student_id);
 
     if (studentIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('id', studentIds);
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name, phone').in('id', studentIds);
 
-      const { data: projects } = await supabase
-        .from('student_projects')
-        .select('id, student_id')
-        .in('student_id', studentIds);
+      const { data: projects } = await supabase.from('student_projects').select('id, student_id').in('student_id', studentIds);
 
       const projectIds = (projects ?? []).map((p) => p.id);
       const { data: milestones } = projectIds.length
@@ -91,7 +86,7 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
         const proj = (projects ?? []).find((pr) => pr.student_id === p.id);
         const ms = proj ? (milestones ?? []).filter((m) => m.student_project_id === proj.id) : [];
         const progress = ms.length > 0 ? Math.round((ms.filter((m) => m.status === 'done').length / ms.length) * 100) : 0;
-        return { id: p.id, full_name: p.full_name, email: p.email, progress };
+        return { id: p.id, full_name: p.full_name, phone: p.phone, progress };
       });
       setStudents(rows);
     } else {
@@ -111,7 +106,7 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- טעינה חד-פעמית ב-mount
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- מריץ מחדש רק כש-classId משתנה, לא כש-load עצמו משתנה
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- מריץ מחדש רק כש-classId משתנה
   }, [classId]);
 
   function copyCode() {
@@ -142,7 +137,7 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
     const supabase = getSupabaseAuthClient();
     const { data } = await supabase
       .from('personal_notes')
-      .select('id, note_type, content, due_date, created_at')
+      .select('id, note_type, content, due_date, created_at, sender')
       .eq('student_id', studentId)
       .order('created_at', { ascending: false });
     setNotesByStudent((prev) => ({ ...prev, [studentId]: data ?? [] }));
@@ -173,6 +168,7 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
         note_type: noteType,
         content: noteContent.trim(),
         due_date: noteDue || null,
+        sender: 'mentor',
       });
       setNoteContent('');
       setNoteDue('');
@@ -189,139 +185,167 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
     );
   }
 
+  const SECTIONS: { key: Section; icon: string; label: string }[] = [
+    { key: 'students', icon: 'solar:users-group-rounded-bold', label: 'רשימת סטודנטים' },
+    { key: 'assignments', icon: 'solar:checklist-minimalistic-bold', label: 'מטלות כיתתיות' },
+  ];
+
   return (
-    <div className="min-h-screen bg-brand-bg p-4 sm:p-6" dir="rtl">
-      <div className="mx-auto max-w-4xl">
-        <button onClick={() => router.push('/mentor')} className="mb-4 flex items-center gap-1 text-sm font-bold text-brand-linktext hover:underline">
-          <Icon icon="solar:arrow-right-linear" width={18} />
-          חזרה ללוח הבקרה
+    <div className="flex min-h-screen bg-brand-bg" dir="rtl">
+      <aside className="flex w-56 shrink-0 flex-col gap-1 border-l border-brand-category bg-brand-cardbg p-4">
+        <button onClick={() => router.push('/mentor')} className="mb-3 flex items-center gap-1 px-1 text-xs font-bold text-brand-linktext hover:underline">
+          <Icon icon="solar:arrow-right-linear" width={16} />
+          כל הכיתות
         </button>
-
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-brand-cardbg p-5 shadow-sm">
-          <h1 className="text-lg font-bold text-brand-text">{cls.class_name}</h1>
-          <button onClick={copyCode} className="flex items-center gap-2 rounded-xl bg-brand-picture px-4 py-2 text-sm font-bold text-brand-text">
-            <Icon icon={copied ? 'solar:check-circle-bold' : 'solar:copy-bold'} width={16} />
-            קוד: <span className="font-mono tracking-widest">{cls.join_code}</span>
+        <div className="mb-3 truncate px-1 text-sm font-bold text-brand-text">{cls.class_name}</div>
+        {SECTIONS.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => setSection(s.key)}
+            className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-bold transition ${
+              section === s.key ? 'bg-brand-name text-brand-text' : 'text-brand-textsoft hover:bg-brand-bg'
+            }`}
+          >
+            <Icon icon={s.icon} width={18} />
+            {s.label}
           </button>
-        </div>
+        ))}
+        <button onClick={copyCode} className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-brand-picture px-3 py-2 text-xs font-bold text-brand-text">
+          <Icon icon={copied ? 'solar:check-circle-bold' : 'solar:copy-bold'} width={14} />
+          <span className="font-mono tracking-widest">{cls.join_code}</span>
+        </button>
+      </aside>
 
-        <div className="mb-6 rounded-2xl bg-brand-cardbg p-5 shadow-sm">
-          <h2 className="mb-3 text-sm font-bold text-brand-text">רשימת סטודנטים ({students.length})</h2>
-          {students.length === 0 ? (
-            <p className="py-6 text-center text-brand-textsoft">עדיין אין סטודנטים בכיתה - שתף את הקוד</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {students.map((s) => (
-                <div key={s.id} className="rounded-xl border border-brand-category">
-                  <button onClick={() => toggleStudent(s.id)} className="flex w-full items-center justify-between gap-3 p-3 text-right">
-                    <div>
-                      <div className="text-sm font-bold text-brand-text">{s.full_name}</div>
-                      <div className="text-xs text-brand-textsoft">{s.email}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-brand-category">
-                        <div className="h-full rounded-full bg-brand-linktext" style={{ width: `${s.progress}%` }} />
+      <main className="flex-1 p-6">
+        {section === 'students' && (
+          <div>
+            <h1 className="mb-5 flex items-center gap-2 text-lg font-bold text-brand-text">
+              <Icon icon="solar:users-group-rounded-bold" width={22} /> רשימת סטודנטים ({students.length})
+            </h1>
+
+            {students.length === 0 ? (
+              <p className="py-16 text-center text-brand-textsoft">עדיין אין סטודנטים בכיתה - שתף את הקוד</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {students.map((s) => (
+                  <div key={s.id} className="rounded-xl bg-brand-cardbg shadow-sm">
+                    <button onClick={() => toggleStudent(s.id)} className="flex w-full items-center justify-between gap-3 p-4 text-right">
+                      <div>
+                        <div className="text-sm font-bold text-brand-text">{s.full_name}</div>
+                        <div className="text-xs text-brand-textsoft">{s.phone}</div>
                       </div>
-                      <span className="text-xs font-bold text-brand-textsoft">{s.progress}%</span>
-                      <Icon icon={openStudentId === s.id ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} width={16} className="text-brand-textsoft" />
-                    </div>
-                  </button>
-
-                  {openStudentId === s.id && (
-                    <div className="border-t border-brand-category p-3">
-                      <div className="mb-3 flex flex-wrap gap-2">
-                        <select value={noteType} onChange={(e) => setNoteType(e.target.value as Note['note_type'])} className="rounded-lg border border-brand-category bg-brand-bg px-2 py-1.5 text-xs text-brand-text outline-none">
-                          <option value="note">הערה</option>
-                          <option value="message">הודעה</option>
-                          <option value="task">מטלה אישית</option>
-                        </select>
-                        <input
-                          placeholder="תוכן..."
-                          value={noteContent}
-                          onChange={(e) => setNoteContent(e.target.value)}
-                          className="min-w-[160px] flex-1 rounded-lg border border-brand-category bg-brand-bg px-2 py-1.5 text-xs text-brand-text outline-none"
-                        />
-                        <input
-                          type="date"
-                          value={noteDue}
-                          onChange={(e) => setNoteDue(e.target.value)}
-                          className="rounded-lg border border-brand-category bg-brand-bg px-2 py-1.5 text-xs text-brand-text outline-none"
-                        />
-                        <button
-                          onClick={() => addNote(s.id)}
-                          disabled={savingNote || !noteContent.trim()}
-                          className="rounded-lg bg-brand-name px-3 py-1.5 text-xs font-bold text-brand-text disabled:opacity-60"
-                        >
-                          שלח
-                        </button>
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-brand-category">
+                          <div className="h-full rounded-full bg-brand-linktext" style={{ width: `${s.progress}%` }} />
+                        </div>
+                        <span className="text-xs font-bold text-brand-textsoft">{s.progress}%</span>
+                        <Icon icon={openStudentId === s.id ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} width={16} className="text-brand-textsoft" />
                       </div>
+                    </button>
 
-                      <div className="flex flex-col gap-2">
-                        {(notesByStudent[s.id] ?? []).map((n) => (
-                          <div key={n.id} className="flex items-start gap-2 rounded-lg bg-brand-bg p-2 text-xs">
-                            <Icon icon={NOTE_TYPE_ICONS[n.note_type]} width={14} className="mt-0.5 shrink-0 text-brand-textsoft" />
-                            <div>
-                              <span className="font-bold text-brand-text">{NOTE_TYPE_LABELS[n.note_type]}: </span>
-                              <span className="text-brand-text">{n.content}</span>
-                              {n.due_date && <span className="mr-2 text-brand-textsoft">(עד {n.due_date})</span>}
+                    {openStudentId === s.id && (
+                      <div className="border-t border-brand-category p-4">
+                        <div className="mb-3 flex flex-wrap gap-2">
+                          <select value={noteType} onChange={(e) => setNoteType(e.target.value as Note['note_type'])} className="rounded-lg border border-brand-category bg-brand-bg px-2 py-1.5 text-xs text-brand-text outline-none">
+                            <option value="note">הערה</option>
+                            <option value="message">הודעה</option>
+                            <option value="task">מטלה אישית</option>
+                          </select>
+                          <input
+                            placeholder="תוכן..."
+                            value={noteContent}
+                            onChange={(e) => setNoteContent(e.target.value)}
+                            className="min-w-[160px] flex-1 rounded-lg border border-brand-category bg-brand-bg px-2 py-1.5 text-xs text-brand-text outline-none"
+                          />
+                          <input
+                            type="date"
+                            value={noteDue}
+                            onChange={(e) => setNoteDue(e.target.value)}
+                            className="rounded-lg border border-brand-category bg-brand-bg px-2 py-1.5 text-xs text-brand-text outline-none"
+                          />
+                          <button
+                            onClick={() => addNote(s.id)}
+                            disabled={savingNote || !noteContent.trim()}
+                            className="rounded-lg bg-brand-name px-3 py-1.5 text-xs font-bold text-brand-text disabled:opacity-60"
+                          >
+                            שלח
+                          </button>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          {(notesByStudent[s.id] ?? []).map((n) => (
+                            <div key={n.id} className="flex items-start gap-2 rounded-lg bg-brand-bg p-2 text-xs">
+                              <Icon icon={NOTE_TYPE_ICONS[n.note_type]} width={14} className="mt-0.5 shrink-0 text-brand-textsoft" />
+                              <div>
+                                <span className="font-bold text-brand-text">{n.sender === 'student' ? 'הסטודנט' : NOTE_TYPE_LABELS[n.note_type]}: </span>
+                                <span className="text-brand-text">{n.content}</span>
+                                {n.due_date && <span className="mr-2 text-brand-textsoft">(עד {n.due_date})</span>}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                        {(notesByStudent[s.id] ?? []).length === 0 && <p className="text-center text-xs text-brand-textsoft">אין עדיין הערות לסטודנט הזה</p>}
+                          ))}
+                          {(notesByStudent[s.id] ?? []).length === 0 && <p className="text-center text-xs text-brand-textsoft">אין עדיין הערות לסטודנט הזה</p>}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {section === 'assignments' && (
+          <div>
+            <h1 className="mb-5 flex items-center gap-2 text-lg font-bold text-brand-text">
+              <Icon icon="solar:checklist-minimalistic-bold" width={22} /> מטלות כיתתיות
+            </h1>
+
+            <div className="mb-5 rounded-2xl bg-brand-cardbg p-5 shadow-sm">
+              <div className="flex flex-wrap gap-2">
+                <input
+                  placeholder="כותרת המטלה"
+                  value={assignTitle}
+                  onChange={(e) => setAssignTitle(e.target.value)}
+                  className="min-w-[160px] flex-1 rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none"
+                />
+                <input
+                  placeholder="תיאור (אופציונלי)"
+                  value={assignDesc}
+                  onChange={(e) => setAssignDesc(e.target.value)}
+                  className="min-w-[160px] flex-1 rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none"
+                />
+                <input
+                  type="date"
+                  value={assignDue}
+                  onChange={(e) => setAssignDue(e.target.value)}
+                  title="תאריך יעד (אופציונלי)"
+                  className="rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none"
+                />
+                <button
+                  onClick={addAssignment}
+                  disabled={savingAssignment || !assignTitle.trim()}
+                  className="rounded-xl bg-brand-name px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-60"
+                >
+                  הוסף
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {assignments.map((a) => (
+                <div key={a.id} className="rounded-xl bg-brand-cardbg p-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-brand-text">{a.title}</span>
+                    {a.due_date && <span className="text-xs font-bold text-brand-textsoft">עד {a.due_date}</span>}
+                  </div>
+                  {a.description && <p className="mt-1 text-xs text-brand-textsoft">{a.description}</p>}
                 </div>
               ))}
+              {assignments.length === 0 && <p className="py-10 text-center text-xs text-brand-textsoft">אין עדיין מטלות כיתתיות</p>}
             </div>
-          )}
-        </div>
-
-        <div className="rounded-2xl bg-brand-cardbg p-5 shadow-sm">
-          <h2 className="mb-3 text-sm font-bold text-brand-text">מטלות כיתתיות</h2>
-          <div className="mb-4 flex flex-wrap gap-2">
-            <input
-              placeholder="כותרת המטלה"
-              value={assignTitle}
-              onChange={(e) => setAssignTitle(e.target.value)}
-              className="min-w-[160px] flex-1 rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none"
-            />
-            <input
-              placeholder="תיאור (אופציונלי)"
-              value={assignDesc}
-              onChange={(e) => setAssignDesc(e.target.value)}
-              className="min-w-[160px] flex-1 rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none"
-            />
-            <input
-              type="date"
-              value={assignDue}
-              onChange={(e) => setAssignDue(e.target.value)}
-              title="תאריך יעד (אופציונלי)"
-              className="rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none"
-            />
-            <button
-              onClick={addAssignment}
-              disabled={savingAssignment || !assignTitle.trim()}
-              className="rounded-xl bg-brand-name px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-60"
-            >
-              הוסף
-            </button>
           </div>
-
-          <div className="flex flex-col gap-2">
-            {assignments.map((a) => (
-              <div key={a.id} className="rounded-xl border border-brand-category p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-brand-text">{a.title}</span>
-                  {a.due_date && <span className="text-xs font-bold text-brand-textsoft">עד {a.due_date}</span>}
-                </div>
-                {a.description && <p className="mt-1 text-xs text-brand-textsoft">{a.description}</p>}
-              </div>
-            ))}
-            {assignments.length === 0 && <p className="py-4 text-center text-xs text-brand-textsoft">אין עדיין מטלות כיתתיות</p>}
-          </div>
-        </div>
-      </div>
+        )}
+      </main>
     </div>
   );
 }

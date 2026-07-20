@@ -1,12 +1,13 @@
-// Version: 1.3
-// Title: User Menu (Header) | Change from v1.2: dropdown now shows
-// role-specific links - mentors (role==='mentor' && mentor_approved) get
-// "לוח בקרה - מנחה" (/mentor), students get "הצטרפות לכיתה" (/join-class).
-// Important Data: client component placed in AppShell's HeaderNav, next to
-// the cart button - the header itself is `sticky top-0`, so this avatar stays
-// visible on scroll without extra positioning. Reads the Supabase auth
-// session client-side, then fetches the matching profiles row - RLS already
-// permits a user to select their own row (see supabase_schema_v1.1_auth.sql).
+// Version: 1.4
+// Title: User Menu (Header) | Change from v1.3: the class-related link for
+// students now checks membership (mentor_class_students, self-select RLS
+// policy) and swaps label/icon - "הצטרפות לכיתה" before joining, "הכיתה שלי"
+// after. Both point to /join-class, which itself branches on membership (see
+// that page's v1.2 notes). Important Data: client component placed in
+// AppShell's HeaderNav, next to the cart button - the header itself is
+// `sticky top-0`, so this avatar stays visible on scroll without extra
+// positioning. Reads the Supabase auth session client-side, then fetches the
+// matching profiles row - RLS already permits a user to select their own row.
 // Subscribes to onAuthStateChange so the menu updates immediately after
 // login/logout without a full page reload.
 
@@ -23,6 +24,7 @@ type Profile = { full_name: string; avatar_icon: string; role: 'student' | 'ment
 export default function UserMenu() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [hasClass, setHasClass] = useState(false);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
@@ -36,6 +38,14 @@ export default function UserMenu() {
         .eq('id', userId)
         .maybeSingle();
       setProfile(data);
+
+      if (data?.role === 'student') {
+        const { count } = await supabase
+          .from('mentor_class_students')
+          .select('id', { count: 'exact', head: true })
+          .eq('student_id', userId);
+        setHasClass((count ?? 0) > 0);
+      }
     }
 
     supabase.auth.getUser().then(({ data }) => {
@@ -114,8 +124,8 @@ export default function UserMenu() {
                   href="/join-class"
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-brand-text hover:bg-brand-bg"
                 >
-                  <Icon icon="solar:users-group-two-rounded-bold" width={18} />
-                  הצטרפות לכיתה
+                  <Icon icon={hasClass ? 'solar:users-group-rounded-bold' : 'solar:users-group-two-rounded-bold'} width={18} />
+                  {hasClass ? 'הכיתה שלי' : 'הצטרפות לכיתה'}
                 </a>
               </>
             )}
