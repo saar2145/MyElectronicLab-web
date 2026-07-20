@@ -1,14 +1,13 @@
-// Version: 2.1
-// Title: Admin Dashboard | Change from v2.0: added a "בדיקת אפיליאט" section -
-// checks every product's link for two failure modes (broken link, or resolves
-// fine but lost the affiliate tracking) plus, via the AliExpress Affiliate
-// API, the live commission rate - see lib/aliexpress-affiliate.ts and
-// app/api/admin/affiliate-check/route.ts for the full mechanism. Important
-// Data: client component - checks auth by attempting a GET to
-// /api/admin/tickets (401 → show login form). Session persists via httpOnly
-// cookie. "הוספת מוצרים" requires picking an EXISTING category - see the long
-// comment in app/api/admin/products/route.ts for why (the catalog's grouping
-// is order-based, not a relational category_id).
+// Version: 2.2
+// Title: Admin Dashboard | Change from v2.1: "פרטים" on the affiliate-check
+// table now shows whenever ANY check exists (not only when details is
+// non-empty - an empty string was hiding the button entirely), and always
+// includes the HTTP status + link as a fallback even if details itself is
+// blank. Important Data: client component - checks auth by attempting a GET
+// to /api/admin/tickets (401 → show login form). Session persists via
+// httpOnly cookie. "הוספת מוצרים" requires picking an EXISTING category -
+// see the long comment in app/api/admin/products/route.ts for why (the
+// catalog's grouping is order-based, not a relational category_id).
 
 'use client';
 
@@ -746,7 +745,7 @@ function AffiliateCheckSection() {
                           <button onClick={() => runOne(r.id)} disabled={running} className="rounded-lg bg-brand-bg px-2.5 py-1.5 text-xs font-bold text-brand-text disabled:opacity-60">
                             בדוק שוב
                           </button>
-                          {r.check?.details && (
+                          {r.check && (
                             <button onClick={() => setExpandedId(expandedId === r.id ? null : r.id)} className="rounded-lg bg-brand-bg px-2.5 py-1.5 text-xs font-bold text-brand-textsoft">
                               פרטים
                             </button>
@@ -754,10 +753,13 @@ function AffiliateCheckSection() {
                         </div>
                       </td>
                     </tr>
-                    {expandedId === r.id && r.check?.details && (
+                    {expandedId === r.id && r.check && (
                       <tr>
                         <td colSpan={5} className="bg-brand-bg px-3 py-3">
-                          <pre className="max-h-40 overflow-auto whitespace-pre-wrap text-[10px] text-brand-textsoft">{r.check.details}</pre>
+                          <div className="mb-1 text-[10px] text-brand-textsoft">
+                            HTTP status: {r.check.http_status ?? '—'} | קישור: {r.link ?? '—'}
+                          </div>
+                          <pre className="max-h-40 overflow-auto whitespace-pre-wrap text-[10px] text-brand-textsoft">{r.check.details || '(אין פרטים נוספים - ריק)'}</pre>
                         </td>
                       </tr>
                     )}
