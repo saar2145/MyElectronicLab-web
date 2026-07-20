@@ -41,11 +41,70 @@ function isOverdue(m: Milestone): boolean {
   return new Date(m.due_date) < new Date(new Date().toDateString());
 }
 
+type ClassAssignment = { id: string; title: string; description: string; due_date: string | null };
+type MentorNote = { id: string; note_type: 'note' | 'message' | 'task'; content: string; due_date: string | null; created_at: string };
+
+const NOTE_TYPE_LABELS: Record<MentorNote['note_type'], string> = { note: 'הערה', message: 'הודעה', task: 'מטלה אישית' };
+const NOTE_TYPE_ICONS: Record<MentorNote['note_type'], string> = {
+  note: 'solar:notes-bold',
+  message: 'solar:chat-round-dots-bold',
+  task: 'solar:checklist-minimalistic-bold',
+};
+
+function MentorUpdatesSection({ assignments, notes }: { assignments: ClassAssignment[]; notes: MentorNote[] }) {
+  if (assignments.length === 0 && notes.length === 0) return null;
+
+  return (
+    <div className="mb-4 rounded-2xl bg-brand-cardbg p-6 shadow-lg">
+      <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-brand-text">
+        <Icon icon="solar:mailbox-bold" width={18} /> מהמנחה שלי
+      </h2>
+
+      {assignments.length > 0 && (
+        <div className="mb-4">
+          <div className="mb-2 text-xs font-bold text-brand-textsoft">מטלות כיתתיות</div>
+          <div className="flex flex-col gap-2">
+            {assignments.map((a) => (
+              <div key={a.id} className="rounded-xl border border-brand-category p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-brand-text">{a.title}</span>
+                  {a.due_date && <span className="text-xs font-bold text-brand-textsoft">עד {a.due_date}</span>}
+                </div>
+                {a.description && <p className="mt-1 text-xs text-brand-textsoft">{a.description}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {notes.length > 0 && (
+        <div>
+          <div className="mb-2 text-xs font-bold text-brand-textsoft">הערות והודעות אישיות</div>
+          <div className="flex flex-col gap-2">
+            {notes.map((n) => (
+              <div key={n.id} className="flex items-start gap-2 rounded-lg bg-brand-bg p-2 text-xs">
+                <Icon icon={NOTE_TYPE_ICONS[n.note_type]} width={14} className="mt-0.5 shrink-0 text-brand-textsoft" />
+                <div>
+                  <span className="font-bold text-brand-text">{NOTE_TYPE_LABELS[n.note_type]}: </span>
+                  <span className="text-brand-text">{n.content}</span>
+                  {n.due_date && <span className="mr-2 text-brand-textsoft">(עד {n.due_date})</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MyProjectPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [assignments, setAssignments] = useState<ClassAssignment[]>([]);
+  const [notes, setNotes] = useState<MentorNote[]>([]);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [creating, setCreating] = useState(false);
@@ -74,6 +133,25 @@ export default function MyProjectPage() {
         .order('order_index', { ascending: true });
       setMilestones(ms ?? []);
     }
+
+    const { data: classRows } = await supabase.from('mentor_class_students').select('class_id').eq('student_id', userData.user.id);
+    const classIds = (classRows ?? []).map((c) => c.class_id);
+    if (classIds.length > 0) {
+      const { data: assignmentRows } = await supabase
+        .from('class_assignments')
+        .select('id, title, description, due_date')
+        .in('class_id', classIds)
+        .order('created_at', { ascending: false });
+      setAssignments(assignmentRows ?? []);
+    }
+
+    const { data: noteRows } = await supabase
+      .from('personal_notes')
+      .select('id, note_type, content, due_date, created_at')
+      .eq('student_id', userData.user.id)
+      .order('created_at', { ascending: false });
+    setNotes(noteRows ?? []);
+
     setLoading(false);
   }
 
@@ -130,6 +208,8 @@ export default function MyProjectPage() {
             חזרה לקטלוג
           </button>
 
+          <MentorUpdatesSection assignments={assignments} notes={notes} />
+
           <div className="rounded-2xl bg-brand-cardbg p-6 shadow-lg">
             <h1 className="mb-1 flex items-center gap-2 text-lg font-bold text-brand-text">
               <Icon icon="solar:flag-bold" width={22} /> פרויקט הגמר שלי
@@ -173,6 +253,8 @@ export default function MyProjectPage() {
           <Icon icon="solar:arrow-right-linear" width={18} />
           חזרה לקטלוג
         </button>
+
+        <MentorUpdatesSection assignments={assignments} notes={notes} />
 
         <div className="mb-4 rounded-2xl bg-brand-cardbg p-6 shadow-lg">
           {editingInfo ? (

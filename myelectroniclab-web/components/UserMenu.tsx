@@ -1,13 +1,14 @@
-// Version: 1.2
-// Title: User Menu (Header) | Change from v1.1: dropdown now also links to
-// /my-project (the student final-project tracker). Important Data: client
-// component placed in AppShell's HeaderNav, next to the cart button - the
-// header itself is `sticky top-0`, so this avatar stays visible on scroll
-// without extra positioning. Reads the Supabase auth session client-side,
-// then fetches the matching profiles row (full_name, avatar_icon) - RLS
-// already permits a user to select their own row (see
-// supabase_schema_v1.1_auth.sql). Subscribes to onAuthStateChange so the menu
-// updates immediately after login/logout without a full page reload.
+// Version: 1.3
+// Title: User Menu (Header) | Change from v1.2: dropdown now shows
+// role-specific links - mentors (role==='mentor' && mentor_approved) get
+// "לוח בקרה - מנחה" (/mentor), students get "הצטרפות לכיתה" (/join-class).
+// Important Data: client component placed in AppShell's HeaderNav, next to
+// the cart button - the header itself is `sticky top-0`, so this avatar stays
+// visible on scroll without extra positioning. Reads the Supabase auth
+// session client-side, then fetches the matching profiles row - RLS already
+// permits a user to select their own row (see supabase_schema_v1.1_auth.sql).
+// Subscribes to onAuthStateChange so the menu updates immediately after
+// login/logout without a full page reload.
 
 'use client';
 
@@ -17,7 +18,7 @@ import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
 import { getAvatarIcon } from '@/lib/avatar-icons';
 
-type Profile = { full_name: string; avatar_icon: string };
+type Profile = { full_name: string; avatar_icon: string; role: 'student' | 'mentor'; mentor_approved: boolean };
 
 export default function UserMenu() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function UserMenu() {
     async function loadProfile(userId: string) {
       const { data } = await supabase
         .from('profiles')
-        .select('full_name, avatar_icon')
+        .select('full_name, avatar_icon, role, mentor_approved')
         .eq('id', userId)
         .maybeSingle();
       setProfile(data);
@@ -90,7 +91,7 @@ export default function UserMenu() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 z-50 mt-2 w-48 rounded-xl bg-brand-cardbg p-2 shadow-2xl ring-1 ring-black/5">
+          <div className="absolute left-0 z-50 mt-2 w-52 rounded-xl bg-brand-cardbg p-2 shadow-2xl ring-1 ring-black/5">
             <div className="truncate px-3 py-2 text-sm font-bold text-brand-text">{profile.full_name}</div>
             <a
               href="/profile"
@@ -99,13 +100,36 @@ export default function UserMenu() {
               <Icon icon="solar:user-id-bold" width={18} />
               הפרופיל שלי
             </a>
-            <a
-              href="/my-project"
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-brand-text hover:bg-brand-bg"
-            >
-              <Icon icon="solar:flag-bold" width={18} />
-              הפרויקט שלי
-            </a>
+
+            {profile.role === 'student' && (
+              <>
+                <a
+                  href="/my-project"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-brand-text hover:bg-brand-bg"
+                >
+                  <Icon icon="solar:flag-bold" width={18} />
+                  הפרויקט שלי
+                </a>
+                <a
+                  href="/join-class"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-brand-text hover:bg-brand-bg"
+                >
+                  <Icon icon="solar:users-group-two-rounded-bold" width={18} />
+                  הצטרפות לכיתה
+                </a>
+              </>
+            )}
+
+            {profile.role === 'mentor' && profile.mentor_approved && (
+              <a
+                href="/mentor"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-brand-text hover:bg-brand-bg"
+              >
+                <Icon icon="solar:presentation-graph-bold" width={18} />
+                לוח בקרה - מנחה
+              </a>
+            )}
+
             <button
               onClick={handleSignOut}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-brand-bg"
