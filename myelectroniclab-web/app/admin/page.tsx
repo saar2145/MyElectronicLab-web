@@ -1,20 +1,18 @@
-// Version: 2.3
-// Title: Admin Dashboard | Change from v2.2: "בדיקת אפיליאט" redesigned as a
-// dashboard - stat cards (ok/not-supporting/broken/api-error/unchecked
-// counts), targeted batch buttons ("בדוק הכל" / "בדוק רק שלא נבדקו" / "בדוק
-// שוב לא-תומכים"), and a live progress bar while a batch runs. Runs
-// CLIENT-SIDE (one product per request, sequential loop in the browser) -
-// this was necessary to avoid Vercel serverless function timeouts on large
-// batches (the old single-POST-does-everything approach could run for
-// minutes), and it also means the check genuinely stops if the tab is closed
-// or navigated away - the UI says so explicitly rather than implying
-// background continuation that doesn't actually happen. The full product
-// list stays as a separate section below the dashboard, unchanged in
-// structure. Important Data: client component - checks auth by attempting a
-// GET to /api/admin/tickets (401 → show login form). Session persists via
-// httpOnly cookie. "הוספת מוצרים" requires picking an EXISTING category -
-// see the long comment in app/api/admin/products/route.ts for why (the
-// catalog's grouping is order-based, not a relational category_id).
+// Version: 2.4
+// Title: Admin Dashboard | Change from v2.3: "הוספת מוצרים" now has an
+// internal tab for "כל המוצרים" - a GRID of every product with an edit
+// modal (name/model/price/description/link/image), in addition to the
+// add-new form. Also fixed a real bug: the category column always showed
+// "-" because it read category_title directly off the product row, which is
+// only ever populated on category-type rows themselves - product rows'
+// category_title is always null. Fixed in app/api/admin/products/route.ts
+// v1.1 by resolving each product's actual category server-side (walking
+// sheet_row order, same logic as lib/catalog.ts). Important Data: client
+// component - checks auth by attempting a GET to /api/admin/tickets (401 →
+// show login form). Session persists via httpOnly cookie. "הוספת מוצרים"
+// requires picking an EXISTING category - see the long comment in
+// app/api/admin/products/route.ts for why (the catalog's grouping is
+// order-based, not a relational category_id).
 
 'use client';
 
@@ -58,9 +56,10 @@ type AdminProduct = {
   name: string | null;
   model: string | null;
   price: number | null;
+  description: string | null;
   image_url: string | null;
   link: string | null;
-  category_title: string | null;
+  resolved_category: string | null;
 };
 
 type OverviewStats = { openTickets: number; pendingMentors: number; totalUsers: number; totalProducts: number };
@@ -475,7 +474,101 @@ function UsersSection() {
   );
 }
 
+function ProductEditModal({ product, onClose, onSaved }: { product: AdminProduct; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    name: product.name ?? '',
+    model: product.model ?? '',
+    price: product.price != null ? String(product.price) : '',
+    description: product.description ?? '',
+    link: product.link ?? '',
+    image_url: product.image_url ?? '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const inputClass = 'w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none focus:border-brand-name';
+  const labelClass = 'mb-1 block text-xs font-bold text-brand-textsoft';
+
+  function update<K extends keyof typeof form>(key: K, value: string) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function save() {
+    if (!form.name.trim()) {
+      setError('שם המוצר לא יכול להיות ריק.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    const res = await fetch('/api/admin/products', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: product.id, ...form }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      const json = await res.json();
+      setError(json.error || 'שגיאה בשמירה.');
+      return;
+    }
+    onSaved();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl bg-brand-cardbg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()} dir="rtl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-brand-text">עריכת מוצר</h2>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-brand-textsoft hover:bg-brand-bg">
+            <Icon icon="solar:close-circle-linear" width={20} />
+          </button>
+        </div>
+
+        {product.resolved_category && (
+          <p className="mb-3 text-xs text-brand-textsoft">
+            קטגוריה: <span className="font-bold text-brand-text">{product.resolved_category}</span> (לא ניתנת לעריכה כאן)
+          </p>
+        )}
+
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className={labelClass}>שם המוצר</label>
+            <input value={form.name} onChange={(e) => update('name', e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>דגם</label>
+            <input value={form.model} onChange={(e) => update('model', e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>מחיר</label>
+            <input type="number" value={form.price} onChange={(e) => update('price', e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>תיאור</label>
+            <textarea value={form.description} onChange={(e) => update('description', e.target.value)} className={`${inputClass} min-h-20`} />
+          </div>
+          <div>
+            <label className={labelClass}>קישור (AliExpress וכו&apos;)</label>
+            <input value={form.link} onChange={(e) => update('link', e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>קישור תמונה</label>
+            <input value={form.image_url} onChange={(e) => update('image_url', e.target.value)} className={inputClass} />
+          </div>
+
+          {error && <p className="text-center text-xs text-red-500">{error}</p>}
+
+          <button onClick={save} disabled={saving} className="mt-1 w-full rounded-xl bg-brand-name py-2.5 text-sm font-bold text-brand-text disabled:opacity-60">
+            {saving ? 'שומר...' : 'שמור שינויים'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AddProductSection() {
+  const [tab, setTab] = useState<'add' | 'all'>('add');
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -483,6 +576,8 @@ function AddProductSection() {
   const [status, setStatus] = useState<{ type: 'error' | 'success'; msg: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
+  const [gridSearch, setGridSearch] = useState('');
 
   async function load() {
     setLoading(true);
@@ -546,16 +641,35 @@ function AddProductSection() {
   const inputClass = 'w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none focus:border-brand-name';
   const labelClass = 'mb-1 block text-xs font-bold text-brand-textsoft';
 
+  const filteredProducts = products.filter((p) =>
+    `${p.name ?? ''} ${p.model ?? ''} ${p.resolved_category ?? ''}`.toLowerCase().includes(gridSearch.toLowerCase())
+  );
+
   return (
     <div>
       <h1 className={sectionTitleClass}>
         <Icon icon="solar:box-bold" width={22} /> הוספת מוצרים
       </h1>
 
-      <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
+      <div className="mb-5 flex gap-2">
+        <button
+          onClick={() => setTab('add')}
+          className={`rounded-full px-4 py-2 text-sm font-bold ${tab === 'add' ? 'bg-brand-name text-brand-text' : 'bg-brand-cardbg text-brand-textsoft'}`}
+        >
+          מוצר חדש
+        </button>
+        <button
+          onClick={() => setTab('all')}
+          className={`rounded-full px-4 py-2 text-sm font-bold ${tab === 'all' ? 'bg-brand-name text-brand-text' : 'bg-brand-cardbg text-brand-textsoft'}`}
+        >
+          כל המוצרים ({products.length})
+        </button>
+      </div>
+
+      {tab === 'add' && (
         <div className={cardClass}>
           <h2 className="mb-4 text-sm font-bold text-brand-text">מוצר חדש</h2>
-          <div className="flex flex-col gap-3">
+          <div className="flex max-w-md flex-col gap-3">
             <div>
               <label className={labelClass}>קטגוריה</label>
               <select value={form.categorySheetRow} onChange={(e) => update('categorySheetRow', e.target.value)} className={inputClass}>
@@ -602,46 +716,68 @@ function AddProductSection() {
             </button>
           </div>
         </div>
+      )}
 
-        <div className={cardClass}>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-brand-text">מוצרים קיימים</h2>
-            <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-bg px-3 py-1.5 text-xs font-bold text-brand-text">
-              <Icon icon="solar:restart-bold" width={12} /> רענון
+      {tab === 'all' && (
+        <div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <input
+              value={gridSearch}
+              onChange={(e) => setGridSearch(e.target.value)}
+              placeholder="חיפוש לפי שם / דגם / קטגוריה..."
+              className="w-64 rounded-full border border-brand-category bg-brand-cardbg px-4 py-2 text-sm text-brand-text outline-none"
+            />
+            <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm">
+              <Icon icon="solar:restart-bold" width={14} /> רענון
             </button>
           </div>
+
           {loading ? (
             <p className="text-center text-brand-textsoft">טוען...</p>
+          ) : filteredProducts.length === 0 ? (
+            <p className="py-16 text-center text-brand-textsoft">לא נמצאו מוצרים</p>
           ) : (
-            <div className="max-h-[520px] overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-brand-category text-right text-brand-textsoft">
-                    <th className="px-2 py-2">שם</th>
-                    <th className="px-2 py-2">קטגוריה</th>
-                    <th className="px-2 py-2">מחיר</th>
-                    <th className="px-2 py-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map((p) => (
-                    <tr key={p.id} className="border-b border-brand-category/50 text-brand-text">
-                      <td className="px-2 py-2">{p.name}</td>
-                      <td className="px-2 py-2 text-xs text-brand-textsoft">{p.category_title ?? '—'}</td>
-                      <td className="px-2 py-2 text-xs">{p.price ?? '—'}</td>
-                      <td className="px-2 py-2">
-                        <button onClick={() => remove(p.id)} disabled={busyId === p.id} className="rounded-lg bg-red-500/15 px-2.5 py-1 text-xs font-bold text-red-600 disabled:opacity-50">
-                          מחק
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {filteredProducts.map((p) => (
+                <div key={p.id} className="flex flex-col overflow-hidden rounded-2xl bg-brand-cardbg shadow-sm">
+                  <div className="flex aspect-square items-center justify-center bg-white">
+                    {p.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.image_url} alt={p.name ?? ''} className="h-full w-full object-contain" />
+                    ) : (
+                      <Icon icon="solar:gallery-broken-bold" width={32} className="opacity-30" />
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1 p-3">
+                    <div className="truncate text-sm font-bold text-brand-text">{p.name}</div>
+                    <div className="truncate text-xs text-brand-textsoft">{p.resolved_category ?? 'ללא קטגוריה מזוהה'}</div>
+                    <div className="text-xs font-bold text-brand-text">{p.price != null ? `₪${p.price}` : '—'}</div>
+                    <div className="mt-auto flex gap-2 pt-2">
+                      <button onClick={() => setEditingProduct(p)} className="flex-1 rounded-lg bg-brand-name py-1.5 text-xs font-bold text-brand-text">
+                        עריכה
+                      </button>
+                      <button onClick={() => remove(p.id)} disabled={busyId === p.id} className="rounded-lg bg-red-500/15 px-2.5 py-1.5 text-xs font-bold text-red-600 disabled:opacity-50">
+                        מחק
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
-      </div>
+      )}
+
+      {editingProduct && (
+        <ProductEditModal
+          product={editingProduct}
+          onClose={() => setEditingProduct(null)}
+          onSaved={() => {
+            setEditingProduct(null);
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }

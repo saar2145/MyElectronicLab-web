@@ -1,17 +1,19 @@
-// Version: 1.0
-// Title: Admin Products API Route | Important Data: the catalog is NOT a normal
-// relational category system - lib/catalog.ts groups rows by walking them in
-// sheet_row order and nesting each product under whichever category/subcategory
-// row came most recently before it (a direct port of the old Google Sheets
-// layout). So "adding a product to a category" means inserting a new row with
-// row_type='product' at the right POSITION in that ordering, not just setting a
-// category_id. POST here: (1) finds the chosen category's row, (2) finds the
-// sheet_row of the next category row (or max sheet_row + 1 if it's the last
-// category) as the insertion point, (3) shifts every row at/after that point up
-// by 1, (4) inserts the new product at the freed slot. GET returns the category
-// list (for the picker) and all products. DELETE removes a single product row -
-// no reordering needed since gaps in sheet_row are harmless (only relative order
-// matters, not contiguity).
+// Version: 1.1
+// Title: Admin Products API Route | Change from v1.0: (1) GET now resolves
+// each product's ACTUAL category by walking all rows in sheet_row order and
+// tracking the most recent category/subcategory seen - exactly like
+// lib/catalog.ts's groupCatalog() does for the public site. Before this, the
+// admin list showed "-" for every product's category because it read
+// category_title directly off the product row, which is only ever set on
+// category-type rows themselves (a product row's own category_title is
+// always null - that was the actual bug, not a display glitch); (2) added
+// PATCH to edit an existing product's fields. Important Data: the catalog is
+// NOT a normal relational category system - "adding a product to a
+// category" means inserting a row at the right POSITION in sheet_row order
+// (see POST below), not setting a category_id. PATCH intentionally does NOT
+// support moving a product to a different category (that would need the same
+// shift-and-insert dance as POST) - it only edits name/model/price/
+// description/link/image_url on the existing row.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionToken } from '@/lib/admin-auth';
@@ -30,7 +32,7 @@ export async function GET(req: NextRequest) {
   const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
     .from('products')
-    .select('id, sheet_row, row_type, name, model, price, image_url, link, category_title')
+    .select('id, sheet_row, row_type, name, model, price, description, image_url, link, category_title')
     .order('sheet_row', { ascending: true });
 
   if (error) {
@@ -42,9 +44,33 @@ export async function GET(req: NextRequest) {
   const categories = rows
     .filter((r) => r.row_type === 'category')
     .map((r) => ({ sheet_row: r.sheet_row, title: r.category_title }));
-  const products = rows.filter((r) => r.row_type === 'product');
 
-  return NextResponse.json({ categories, products });
+  // פותר את הקטגוריה האמיתית של כל מוצר, בדיוק כמו lib/catalog.ts:
+  // הולך על השורות בסדר sheet_row ומזכיר מה הייתה הקטגוריה/תת-קטגוריה
+  // האחרונה שנראתה לפני המוצר הזה
+  let currentCategory: string | null = null;
+  let currentSubcategory: string | null = null;
+  const productsResolved: Array<(typeof rows)[number] & { resolved_category: string | null }> = [];
+
+  for (const row of rows) {
+    if (row.row_type === 'category') {
+      currentCategory = row.category_title ?? null;
+      currentSubcategory = null;
+      continue;
+    }
+    if (row.row_type === 'subcategory') {
+      currentSubcategory = row.category_title ?? null;
+      continue;
+    }
+    if (row.row_type === 'product') {
+      productsResolved.push({
+        ...row,
+        resolved_category: currentSubcategory ? `${currentCategory ?? ''} / ${currentSubcategory}` : currentCategory,
+      });
+    }
+  }
+
+  return NextResponse.json({ categories, products: productsResolved });
 }
 
 export async function POST(req: NextRequest) {
@@ -116,6 +142,43 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error('Admin products POST error:', e);
+    return NextResponse.json({ error: 'שגיאה בשרת.' }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  if (!requireAdmin(req)) {
+    return NextResponse.json({ error: 'אין הרשאה. יש להתחבר מחדש.' }, { status: 401 });
+  }
+
+  try {
+    const { id, name, model, price, description, link, image_url } = await req.json();
+    if (!id || !name) {
+      return NextResponse.json({ error: 'חסר מזהה או שם מוצר.' }, { status: 400 });
+    }
+
+    const supabase = getSupabaseServerClient();
+    const { error } = await supabase
+      .from('products')
+      .update({
+        name,
+        model: model || null,
+        price: price === '' || price === null || price === undefined ? null : Number(price),
+        description: description || null,
+        link: link || null,
+        image_url: image_url || null,
+      })
+      .eq('id', id)
+      .eq('row_type', 'product');
+
+    if (error) {
+      console.error('Admin product update error:', error.message);
+      return NextResponse.json({ error: 'שגיאה בעדכון המוצר.' }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error('Admin products PATCH error:', e);
     return NextResponse.json({ error: 'שגיאה בשרת.' }, { status: 500 });
   }
 }
