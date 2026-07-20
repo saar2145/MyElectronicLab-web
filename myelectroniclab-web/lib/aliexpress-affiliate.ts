@@ -1,17 +1,18 @@
-// Version: 1.1
-// Title: AliExpress Affiliate API Client | Change from v1.0: fixed
-// "IncompleteSignature" error - api-sg.aliexpress.com/sync is Alibaba's newer
-// IOP gateway (not the legacy TOP gateway), which requires the API PATH
-// ("/sync") prepended to the sorted param string before HMAC-signing. v1.0
-// was missing that prefix - a well-known gotcha with this specific gateway.
-// Important Data: sort all params alphabetically by key, concatenate as
-// "key"+"value" pairs with no separators, prepend "/sync", then HMAC-SHA256
-// that string with the app secret, uppercase hex. Server-only - never import
-// from a client component (uses ALIEXPRESS_APP_SECRET).
+// Version: 1.2
+// Title: AliExpress Affiliate API Client | Change from v1.1: v1.1's "/sync
+// path prefix" theory was wrong (reverted) - found a real, working NodeJS
+// code sample confirming the actual bug: sign_method=sha256 expects
+// TIMESTAMP AS EPOCH MILLISECONDS (Date.now()), not the "yyyy-MM-dd HH:mm:ss"
+// string format v1.0/v1.1 used (that format is for the older md5 signing
+// mode, a different code path entirely - mixing them is what produced
+// IncompleteSignature). Important Data: sort all params alphabetically by
+// key, concatenate as "key"+"value" pairs with no separators, HMAC-SHA256
+// that string with the app secret, uppercase hex - no path prefix, no
+// secret-embedded-in-message. Server-only - never import from a client
+// component (uses ALIEXPRESS_APP_SECRET).
 
 import crypto from 'crypto';
 
-const API_PATH = '/sync';
 const API_ENDPOINT = 'https://api-sg.aliexpress.com/sync';
 
 function signParams(params: Record<string, string>, secret: string): string {
@@ -19,15 +20,13 @@ function signParams(params: Record<string, string>, secret: string): string {
     .sort()
     .map((key) => `${key}${params[key]}`)
     .join('');
-  const signBase = API_PATH + sorted;
-  return crypto.createHmac('sha256', secret).update(signBase, 'utf8').digest('hex').toUpperCase();
+  return crypto.createHmac('sha256', secret).update(sorted, 'utf8').digest('hex').toUpperCase();
 }
 
 function timestamp(): string {
-  // TOP API מצפה לפורמט הזה, לפי אזור זמן סין (GMT+8) - לא לפי שעון השרת
-  const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
+  // sign_method=sha256 מצפה למילישניות מאז epoch (Date.now()), לא לפורמט תאריך
+  // מחרוזתי - זה היה הבאג האמיתי, ראה הערת הגרסה למעלה
+  return String(Date.now());
 }
 
 export type AffiliateProductResult = {
