@@ -1,18 +1,14 @@
-// Version: 2.4
-// Title: Admin Dashboard | Change from v2.3: "הוספת מוצרים" now has an
-// internal tab for "כל המוצרים" - a GRID of every product with an edit
-// modal (name/model/price/description/link/image), in addition to the
-// add-new form. Also fixed a real bug: the category column always showed
-// "-" because it read category_title directly off the product row, which is
-// only ever populated on category-type rows themselves - product rows'
-// category_title is always null. Fixed in app/api/admin/products/route.ts
-// v1.1 by resolving each product's actual category server-side (walking
-// sheet_row order, same logic as lib/catalog.ts). Important Data: client
-// component - checks auth by attempting a GET to /api/admin/tickets (401 →
-// show login form). Session persists via httpOnly cookie. "הוספת מוצרים"
-// requires picking an EXISTING category - see the long comment in
-// app/api/admin/products/route.ts for why (the catalog's grouping is
-// order-based, not a relational category_id).
+// Version: 2.6
+// Title: Admin Dashboard | Change from v2.5: users table no longer shows the
+// mentor-approval "סטטוס" column, and unapproved mentors are filtered out of
+// the list entirely - they now live exclusively under "אישור מנחים" until
+// approved, then they appear here (approval is a distinct concept from email
+// verification, and mixing both statuses in one list was confusing).
+// Important Data: client component - checks auth by attempting a GET to
+// /api/admin/tickets (401 → show login form). Session persists via httpOnly
+// cookie. "הוספת מוצרים" requires picking an EXISTING category - see the
+// long comment in app/api/admin/products/route.ts for why (the catalog's
+// grouping is order-based, not a relational category_id).
 
 'use client';
 
@@ -48,6 +44,7 @@ type AdminUser = {
   college: string;
   mentor_approved: boolean;
   created_at: string;
+  email_verified: boolean | null;
 };
 
 type CategoryOption = { sheet_row: number; title: string | null };
@@ -403,7 +400,9 @@ function UsersSection() {
     setBusyId(null);
   }
 
-  const filtered = users.filter((u) => `${u.full_name} ${u.email} ${u.college}`.toLowerCase().includes(query.toLowerCase()));
+  const filtered = users
+    .filter((u) => u.role !== 'mentor' || u.mentor_approved) // מנחים שעוד לא אושרו נשארים רק ב"אישור מנחים", לא ברשימה הזו
+    .filter((u) => `${u.full_name} ${u.email} ${u.college}`.toLowerCase().includes(query.toLowerCase()));
 
   return (
     <div>
@@ -438,7 +437,7 @@ function UsersSection() {
                 <th className="px-3 py-3">טלפון</th>
                 <th className="px-3 py-3">סוג</th>
                 <th className="px-3 py-3">מכללה</th>
-                <th className="px-3 py-3">סטטוס</th>
+                <th className="px-3 py-3">מאומת</th>
                 <th className="px-3 py-3"></th>
               </tr>
             </thead>
@@ -453,9 +452,15 @@ function UsersSection() {
                   </td>
                   <td className="px-3 py-3">{u.college}</td>
                   <td className="px-3 py-3">
-                    {u.role === 'mentor' && (
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${u.mentor_approved ? 'bg-green-500/15 text-green-700' : 'bg-amber-500/15 text-amber-700'}`}>
-                        {u.mentor_approved ? 'מאושר' : 'ממתין'}
+                    {u.email_verified === null ? (
+                      <span className="text-xs text-brand-textsoft">—</span>
+                    ) : u.email_verified ? (
+                      <span className="flex w-fit items-center gap-1 rounded-full bg-green-500/15 px-2.5 py-1 text-xs font-bold text-green-700">
+                        <Icon icon="solar:check-circle-bold" width={12} /> מאומת
+                      </span>
+                    ) : (
+                      <span className="flex w-fit items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-700">
+                        <Icon icon="solar:letter-unread-bold" width={12} /> לא מאומת
                       </span>
                     )}
                   </td>

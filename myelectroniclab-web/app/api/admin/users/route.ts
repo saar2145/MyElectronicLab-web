@@ -1,9 +1,14 @@
-// Version: 1.0
-// Title: Admin Users API Route | Important Data: GET/DELETE /api/admin/users,
-// same signed-cookie admin auth pattern as the other admin routes. GET returns
-// every profile (not just pending mentors, unlike /api/admin/mentors). DELETE
-// removes the auth.users row via the admin API - profiles cascades
-// automatically (on delete cascade), and any of that user's cart_items too.
+// Version: 1.1
+// Title: Admin Users API Route | Change from v1.0: GET now also returns
+// whether each user's email is verified (email_confirmed_at from
+// auth.users, via supabase.auth.admin.listUsers - profiles has no such
+// column, only auth.users does). Fetches up to 1000 users in one page; if
+// the user base ever exceeds that, this needs pagination added. Important
+// Data: same signed-cookie admin auth pattern as the other admin routes.
+// GET returns every profile (not just pending mentors, unlike
+// /api/admin/mentors). DELETE removes the auth.users row via the admin API -
+// profiles cascades automatically (on delete cascade), and any of that
+// user's cart_items too.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionToken } from '@/lib/admin-auth';
@@ -30,7 +35,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'שגיאה בטעינת המשתמשים.' }, { status: 500 });
   }
 
-  return NextResponse.json({ users: data ?? [] });
+  const { data: authData, error: authError } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  if (authError) {
+    console.error('Admin users auth fetch error:', authError.message);
+    // לא קריטי - עדיף להחזיר את הרשימה בלי "מאומת" מאשר לא להחזיר כלום
+    return NextResponse.json({ users: (data ?? []).map((u) => ({ ...u, email_verified: null })) });
+  }
+
+  const verifiedById = new Map(authData.users.map((u) => [u.id, !!u.email_confirmed_at]));
+  const users = (data ?? []).map((u) => ({ ...u, email_verified: verifiedById.get(u.id) ?? null }));
+
+  return NextResponse.json({ users });
 }
 
 export async function DELETE(req: NextRequest) {
