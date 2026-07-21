@@ -1,14 +1,14 @@
-// Version: 2.6
-// Title: Admin Dashboard | Change from v2.5: users table no longer shows the
-// mentor-approval "סטטוס" column, and unapproved mentors are filtered out of
-// the list entirely - they now live exclusively under "אישור מנחים" until
-// approved, then they appear here (approval is a distinct concept from email
-// verification, and mixing both statuses in one list was confusing).
-// Important Data: client component - checks auth by attempting a GET to
-// /api/admin/tickets (401 → show login form). Session persists via httpOnly
-// cookie. "הוספת מוצרים" requires picking an EXISTING category - see the
-// long comment in app/api/admin/products/route.ts for why (the catalog's
-// grouping is order-based, not a relational category_id).
+// Version: 2.7
+// Title: Admin Dashboard | Change from v2.6: (1) overview now shows total
+// mentors/students/classes alongside the existing cards; (2) new "מנחים"
+// section (distinct from "אישור מנחים" - that one is pending-approval only)
+// lists every approved mentor with their classes and each class's roster,
+// expandable; (3) users table has a new "כיתה" column showing which class(es)
+// a student is in, if any. Important Data: client component - checks auth by
+// attempting a GET to /api/admin/tickets (401 → show login form). Session
+// persists via httpOnly cookie. "הוספת מוצרים" requires picking an EXISTING
+// category - see the long comment in app/api/admin/products/route.ts for why
+// (the catalog's grouping is order-based, not a relational category_id).
 
 'use client';
 
@@ -45,6 +45,7 @@ type AdminUser = {
   mentor_approved: boolean;
   created_at: string;
   email_verified: boolean | null;
+  class_name: string | null;
 };
 
 type CategoryOption = { sheet_row: number; title: string | null };
@@ -59,8 +60,16 @@ type AdminProduct = {
   resolved_category: string | null;
 };
 
-type OverviewStats = { openTickets: number; pendingMentors: number; totalUsers: number; totalProducts: number };
-type Tab = 'overview' | 'tickets' | 'mentors' | 'users' | 'add-product' | 'affiliate-check';
+type OverviewStats = {
+  openTickets: number;
+  pendingMentors: number;
+  totalUsers: number;
+  totalProducts: number;
+  totalMentors: number;
+  totalStudents: number;
+  totalClasses: number;
+};
+type Tab = 'overview' | 'tickets' | 'mentors' | 'mentors-overview' | 'users' | 'add-product' | 'affiliate-check';
 
 const STATUS_COLORS: Record<string, string> = {
   פתוח: 'bg-red-100 text-red-800',
@@ -163,6 +172,9 @@ function OverviewSection({ setTab }: { setTab: (t: Tab) => void }) {
         <StatCard icon="solar:user-check-rounded-bold" label="מנחים ממתינים" value={stats?.pendingMentors ?? 0} onClick={() => setTab('mentors')} />
         <StatCard icon="solar:users-group-rounded-bold" label='סה"כ משתמשים' value={stats?.totalUsers ?? 0} onClick={() => setTab('users')} />
         <StatCard icon="solar:box-bold" label='סה"כ מוצרים' value={stats?.totalProducts ?? 0} onClick={() => setTab('add-product')} />
+        <StatCard icon="solar:presentation-graph-bold" label='סה"כ מנחים' value={stats?.totalMentors ?? 0} onClick={() => setTab('mentors-overview')} />
+        <StatCard icon="solar:user-bold" label='סה"כ סטודנטים' value={stats?.totalStudents ?? 0} onClick={() => setTab('users')} />
+        <StatCard icon="solar:users-group-two-rounded-bold" label='סה"כ כיתות' value={stats?.totalClasses ?? 0} onClick={() => setTab('mentors-overview')} />
       </div>
     </div>
   );
@@ -367,6 +379,111 @@ function MentorsSection() {
   );
 }
 
+type MentorOverviewStudent = { id: string; full_name: string; email: string };
+type MentorOverviewClass = { id: string; class_name: string; join_code: string; created_at: string; students: MentorOverviewStudent[] };
+type MentorOverview = { id: string; full_name: string; email: string; phone: string; created_at: string; classes: MentorOverviewClass[] };
+
+function MentorsOverviewSection() {
+  const [mentors, setMentors] = useState<MentorOverview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedMentorId, setExpandedMentorId] = useState<string | null>(null);
+  const [expandedClassId, setExpandedClassId] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch('/api/admin/mentors-overview');
+    if (res.ok) {
+      const json = await res.json();
+      setMentors(json.mentors ?? []);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- טעינת נתונים סטנדרטית ב-mount
+    load();
+  }, []);
+
+  return (
+    <div>
+      <div className="mb-5 flex items-center justify-between">
+        <h1 className={sectionTitleClass}>
+          <Icon icon="solar:presentation-graph-bold" width={22} /> מנחים
+        </h1>
+        <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm">
+          <Icon icon="solar:restart-bold" width={14} /> רענון
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="text-center text-brand-textsoft">טוען...</p>
+      ) : mentors.length === 0 ? (
+        <p className="py-16 text-center text-brand-textsoft">אין עדיין מנחים מאושרים</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {mentors.map((m) => (
+            <div key={m.id} className="rounded-2xl bg-brand-cardbg shadow-sm">
+              <button
+                onClick={() => setExpandedMentorId(expandedMentorId === m.id ? null : m.id)}
+                className="flex w-full items-center justify-between gap-3 p-4 text-right"
+              >
+                <div>
+                  <div className="text-sm font-bold text-brand-text">{m.full_name}</div>
+                  <div className="text-xs text-brand-textsoft">{m.email} · {m.phone}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-brand-picture px-2.5 py-1 text-xs font-bold text-brand-text">{m.classes.length} כיתות</span>
+                  <Icon icon={expandedMentorId === m.id ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} width={16} className="text-brand-textsoft" />
+                </div>
+              </button>
+
+              {expandedMentorId === m.id && (
+                <div className="border-t border-brand-category p-4">
+                  {m.classes.length === 0 ? (
+                    <p className="text-center text-xs text-brand-textsoft">המנחה הזה עדיין לא יצר אף כיתה</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {m.classes.map((c) => (
+                        <div key={c.id} className="rounded-xl bg-brand-bg">
+                          <button
+                            onClick={() => setExpandedClassId(expandedClassId === c.id ? null : c.id)}
+                            className="flex w-full items-center justify-between gap-2 p-3 text-right text-sm"
+                          >
+                            <span className="font-bold text-brand-text">{c.class_name}</span>
+                            <span className="flex items-center gap-2 text-xs text-brand-textsoft">
+                              {c.students.length} סטודנטים
+                              <Icon icon={expandedClassId === c.id ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} width={14} />
+                            </span>
+                          </button>
+                          {expandedClassId === c.id && (
+                            <div className="border-t border-brand-category/50 p-3">
+                              {c.students.length === 0 ? (
+                                <p className="text-center text-xs text-brand-textsoft">אין עדיין סטודנטים בכיתה</p>
+                              ) : (
+                                <ul className="flex flex-col gap-1">
+                                  {c.students.map((s) => (
+                                    <li key={s.id} className="text-xs text-brand-text">
+                                      {s.full_name} <span className="text-brand-textsoft">({s.email})</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UsersSection() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -437,6 +554,7 @@ function UsersSection() {
                 <th className="px-3 py-3">טלפון</th>
                 <th className="px-3 py-3">סוג</th>
                 <th className="px-3 py-3">מכללה</th>
+                <th className="px-3 py-3">כיתה</th>
                 <th className="px-3 py-3">מאומת</th>
                 <th className="px-3 py-3"></th>
               </tr>
@@ -451,6 +569,7 @@ function UsersSection() {
                     <span className="rounded-full bg-brand-picture px-2.5 py-1 text-xs font-bold">{u.role === 'mentor' ? 'מנחה' : 'סטודנט'}</span>
                   </td>
                   <td className="px-3 py-3">{u.college}</td>
+                  <td className="px-3 py-3 text-xs">{u.class_name ?? <span className="text-brand-textsoft">—</span>}</td>
                   <td className="px-3 py-3">
                     {u.email_verified === null ? (
                       <span className="text-xs text-brand-textsoft">—</span>
@@ -1036,6 +1155,7 @@ const NAV_ITEMS: { tab: Tab; icon: string; label: string }[] = [
   { tab: 'overview', icon: 'solar:widget-5-bold', label: 'סקירה כללית' },
   { tab: 'tickets', icon: 'solar:ticket-bold', label: 'ניהול פניות' },
   { tab: 'mentors', icon: 'solar:user-check-rounded-bold', label: 'אישור מנחים' },
+  { tab: 'mentors-overview', icon: 'solar:presentation-graph-bold', label: 'מנחים' },
   { tab: 'users', icon: 'solar:users-group-rounded-bold', label: 'משתמשים' },
   { tab: 'add-product', icon: 'solar:box-bold', label: 'הוספת מוצרים' },
   { tab: 'affiliate-check', icon: 'solar:link-round-angle-bold', label: 'בדיקת אפיליאט' },
@@ -1079,6 +1199,7 @@ export default function AdminPage() {
         {tab === 'overview' && <OverviewSection setTab={setTab} />}
         {tab === 'tickets' && <TicketsSection />}
         {tab === 'mentors' && <MentorsSection />}
+        {tab === 'mentors-overview' && <MentorsOverviewSection />}
         {tab === 'users' && <UsersSection />}
         {tab === 'add-product' && <AddProductSection />}
         {tab === 'affiliate-check' && <AffiliateCheckSection />}
