@@ -1,5 +1,8 @@
-// Version: 1.1
-// Title: Mentor Dashboard | Change from v1.0: class-creation error now shows
+// Version: 1.2
+// Title: Mentor Dashboard | Change from v1.1: UI/UX refinement pass (visual
+// only, no behavior change) - create-class card gets a gradient accent bar
+// and gradient button, class cards get depth + hover lift. Change from v1.0:
+// class-creation error now shows
 // the real Supabase error message instead of a generic string - same lesson
 // as the registration debugging earlier in this project: a generic message
 // hides the actual cause (RLS check failure, missing table, etc). Important
@@ -156,7 +159,7 @@ export default function MentorDashboardPage() {
           <Icon icon="solar:presentation-graph-bold" width={22} /> לוח בקרה - מנחה
         </h1>
 
-        <div className="mb-6 rounded-2xl bg-brand-cardbg p-5 shadow-sm">
+        <div className="relative mb-6 overflow-hidden rounded-2xl bg-brand-cardbg p-5 shadow-lg ring-1 ring-black/5 before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-[linear-gradient(90deg,var(--header-grad-from),var(--header-grad-to))] before:content-['']">
           <h2 className="mb-3 text-sm font-bold text-brand-text">כיתה חדשה</h2>
           <div className="flex flex-wrap gap-2">
             <input
@@ -164,12 +167,13 @@ export default function MentorDashboardPage() {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && createClass()}
-              className="min-w-[200px] flex-1 rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none focus:border-brand-name"
+              className="min-w-[200px] flex-1 rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-name focus:ring-2 focus:ring-brand-name/40"
             />
             <button
               onClick={createClass}
               disabled={creating || !newName.trim()}
-              className="rounded-xl bg-brand-name px-5 py-2 text-sm font-bold text-brand-text disabled:opacity-60"
+              className="rounded-xl px-5 py-2 text-sm font-bold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
             >
               {creating ? 'יוצר...' : 'צור כיתה'}
             </button>
@@ -188,7 +192,7 @@ export default function MentorDashboardPage() {
               <button
                 key={c.id}
                 onClick={() => router.push(`/mentor/classes/${c.id}`)}
-                className="rounded-2xl bg-brand-cardbg p-5 text-right shadow-sm transition hover:brightness-95"
+                className="rounded-2xl bg-brand-cardbg p-5 text-right shadow-md ring-1 ring-black/5 transition hover:-translate-y-1 hover:shadow-xl hover:ring-brand-link"
               >
                 <div className="mb-2 flex items-center justify-between">
                   <span className="font-bold text-brand-text">{c.class_name}</span>

@@ -1,5 +1,7 @@
-// Version: 1.1
-// Title: Profile Page | Change from v1.0: avatar picker now shows all 27
+// Version: 1.2
+// Title: Profile Page | Change from v1.1: UI/UX refinement pass (visual only,
+// no behavior change) - card gets a gradient accent bar, avatar ring uses the
+// brand gradient. Change from v1.0: avatar picker now shows all 27
 // icons in a dense grid instead of 9 large buttons - see lib/avatar-icons.ts
 // v2.0. Important Data: shows all profile fields for the logged-in user
 // (name, phone, email, gender, role, college, mentor_approved) and lets them
@@ -90,9 +92,12 @@ export default function ProfilePage() {
           חזרה לקטלוג
         </button>
 
-        <div className="rounded-2xl bg-brand-cardbg p-6 shadow-lg">
+        <div className="relative overflow-hidden rounded-2xl bg-brand-cardbg p-6 shadow-xl ring-1 ring-black/5 before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-[linear-gradient(90deg,var(--header-grad-from),var(--header-grad-to))] before:content-['']">
           <div className="mb-6 flex flex-col items-center gap-2">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-picture ring-4 ring-brand-name">
+            <div
+              className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-picture shadow-lg"
+              style={{ boxShadow: '0 0 0 4px var(--header-grad-from)' }}
+            >
               <Icon icon={AVATAR_ICONS.find((a) => a.key === profile.avatar_icon)?.icon ?? AVATAR_ICONS[0].icon} width={40} className="text-brand-text" />
             </div>
             <h1 className="text-lg font-bold text-brand-text">{profile.full_name}</h1>

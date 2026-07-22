@@ -1,5 +1,8 @@
-// Version: 4.0
-// Title: My Project Page | Change from v3.1: (1) the free-text status is now
+// Version: 4.1
+// Title: My Project Page | Change from v4.0: UI/UX refinement pass (visual
+// only, no behavior/logic change) - cards get stronger shadow/ring depth,
+// progress bar uses the brand gradient, milestone circles get a subtle glow
+// when active. Change from v3.1: (1) the free-text status is now
 // a standalone, ALWAYS-VISIBLE textarea (no edit-mode toggle needed) titled
 // "סטטוס הפרויקט" - per the request, this is the single most important
 // element on the page (it's also the most important thing the mentor sees on
@@ -37,9 +40,9 @@ function isOverdue(m: Milestone): boolean {
 }
 
 function circleClasses(m: Milestone): string {
-  if (isOverdue(m)) return 'bg-red-500 text-white';
-  if (m.status === 'done') return 'bg-green-500 text-white';
-  if (m.status === 'in_progress') return 'bg-amber-400 text-white';
+  if (isOverdue(m)) return 'bg-red-500 text-white shadow-[0_0_0_4px_rgba(239,68,68,0.15)]';
+  if (m.status === 'done') return 'bg-green-500 text-white shadow-[0_0_0_4px_rgba(34,197,94,0.15)]';
+  if (m.status === 'in_progress') return 'bg-amber-400 text-white shadow-[0_0_0_4px_rgba(251,191,36,0.15)]';
   return 'bg-brand-category text-brand-textsoft';
 }
 
@@ -131,7 +134,7 @@ export default function MyProjectPage() {
             <Icon icon="solar:arrow-right-linear" width={18} />
             חזרה לקטלוג
           </button>
-          <div className="rounded-2xl bg-brand-cardbg p-6 shadow-lg">
+          <div className="relative overflow-hidden rounded-2xl bg-brand-cardbg p-6 shadow-xl ring-1 ring-black/5 before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-[linear-gradient(90deg,var(--header-grad-from),var(--header-grad-to))] before:content-['']">
             <h1 className="mb-1 flex items-center gap-2 text-lg font-bold text-brand-text">
               <Icon icon="solar:flag-bold" width={22} /> פרויקט הגמר שלי
             </h1>
@@ -141,18 +144,19 @@ export default function MyProjectPage() {
                 placeholder="שם הפרויקט"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                className="w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none focus:border-brand-name"
+                className="w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-name focus:ring-2 focus:ring-brand-name/40"
               />
               <textarea
                 placeholder="תיאור קצר (אופציונלי)"
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
-                className="min-h-24 w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none focus:border-brand-name"
+                className="min-h-24 w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-name focus:ring-2 focus:ring-brand-name/40"
               />
               <button
                 onClick={createProject}
                 disabled={creating || !newTitle}
-                className="w-full rounded-xl bg-brand-name py-2.5 text-sm font-bold text-brand-text disabled:opacity-60"
+                className="w-full rounded-xl py-2.5 text-sm font-bold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
               >
                 {creating ? 'יוצר...' : 'התחל מעקב'}
               </button>
@@ -180,7 +184,7 @@ export default function MyProjectPage() {
         {project.description && <p className="mb-4 text-sm text-brand-textsoft">{project.description}</p>}
 
         {/* הכי חשוב בעמוד - תמיד גלוי, בלי מצב עריכה נפרד */}
-        <div className="mb-4 rounded-2xl border-2 border-brand-linktext bg-brand-cardbg p-5 shadow-lg">
+        <div className="mb-4 rounded-2xl border-2 border-brand-linktext bg-brand-cardbg p-5 shadow-xl">
           <h2 className="mb-2 flex items-center gap-2 text-sm font-bold text-brand-text">
             <Icon icon="solar:chat-square-like-bold" width={18} className="text-brand-linktext" />
             סטטוס הפרויקט
@@ -195,17 +199,20 @@ export default function MyProjectPage() {
           />
         </div>
 
-        <div className="mb-4 rounded-2xl bg-brand-cardbg p-5 shadow-lg">
+        <div className="mb-4 rounded-2xl bg-brand-cardbg p-5 shadow-lg ring-1 ring-black/5">
           <div className="mb-1 flex items-center justify-between text-xs font-bold text-brand-textsoft">
             <span>התקדמות</span>
-            <span>{progress}%</span>
+            <span className="text-brand-text">{progress}%</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-brand-category">
-            <div className="h-full rounded-full bg-brand-linktext transition-all" style={{ width: `${progress}%` }} />
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${progress}%`, background: 'linear-gradient(90deg, var(--header-grad-from), var(--header-grad-to))' }}
+            />
           </div>
         </div>
 
-        <div className="rounded-2xl bg-brand-cardbg p-5 shadow-lg">
+        <div className="rounded-2xl bg-brand-cardbg p-5 shadow-lg ring-1 ring-black/5">
           <h2 className="mb-4 text-sm font-bold text-brand-text">שלבי הפרויקט</h2>
 
           <div className="mb-2 flex items-start overflow-x-auto pb-2">

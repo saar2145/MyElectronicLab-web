@@ -1,5 +1,9 @@
-// Version: 4.1
-// Title: Mentor Class Detail | Change from v4.0: added a "העתק קישור הזמנה"
+// Version: 4.2
+// Title: Mentor Class Detail | Change from v4.1: UI/UX refinement pass
+// (visual only, no behavior/logic change) - sidebar active section, progress
+// bars, primary buttons and the mentor's own chat bubbles now use the brand
+// gradient; student roster cards get more depth + hover lift. Change from
+// v4.0: added a "העתק קישור הזמנה"
 // button next to the join code - copies /join-class/[code], which shows a
 // confirmation card (class name + mentor name) via get_class_by_code() before
 // the student joins (see app/join-class/[code]/page.tsx). Important Data:
@@ -111,13 +115,14 @@ function ChatModal({
               {notes.map((n) => (
                 <div
                   key={n.id}
-                  className={`max-w-[80%] rounded-xl p-2.5 text-xs ${
-                    n.sender === 'mentor' ? 'self-end bg-brand-name text-brand-text' : 'self-start border border-brand-category bg-brand-bg text-brand-text'
+                  className={`max-w-[80%] rounded-xl p-2.5 text-xs shadow-sm ${
+                    n.sender === 'mentor' ? 'self-end text-white' : 'self-start border border-brand-category bg-brand-bg text-brand-text'
                   }`}
+                  style={n.sender === 'mentor' ? { background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' } : undefined}
                 >
-                  <div className="mb-0.5 font-bold text-brand-textsoft">{n.sender === 'mentor' ? 'אני' : student.full_name}</div>
+                  <div className={`mb-0.5 font-bold ${n.sender === 'mentor' ? 'text-white/80' : 'text-brand-textsoft'}`}>{n.sender === 'mentor' ? 'אני' : student.full_name}</div>
                   <div>{n.content}</div>
-                  {n.due_date && <div className="mt-1 text-brand-textsoft">עד {n.due_date}</div>}
+                  {n.due_date && <div className={`mt-1 ${n.sender === 'mentor' ? 'text-white/80' : 'text-brand-textsoft'}`}>עד {n.due_date}</div>}
                 </div>
               ))}
             </div>
@@ -144,7 +149,12 @@ function ChatModal({
               className="flex-1 rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none"
               autoFocus
             />
-            <button onClick={send} disabled={sending || !text.trim()} className="rounded-lg bg-brand-name px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-60">
+            <button
+              onClick={send}
+              disabled={sending || !text.trim()}
+              className="rounded-lg px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-px hover:shadow-md disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
+            >
               שלח
             </button>
           </div>
@@ -351,8 +361,9 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
             key={s.key}
             onClick={() => setSection(s.key)}
             className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-bold transition ${
-              section === s.key ? 'bg-brand-name text-brand-text' : 'text-brand-textsoft hover:bg-brand-bg'
+              section === s.key ? 'text-white shadow-md' : 'text-brand-textsoft hover:bg-brand-bg'
             }`}
+            style={section === s.key ? { background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' } : undefined}
           >
             <Icon icon={s.icon} width={18} />
             {s.label}
@@ -380,8 +391,8 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {students.map((s) => (
-                  <div key={s.id} className="relative rounded-2xl bg-brand-cardbg p-4 shadow-sm">
-                    {s.hasUnread && <span className="absolute left-4 top-4 h-2.5 w-2.5 rounded-full bg-red-500" title="הודעה חדשה שלא נענתה" />}
+                  <div key={s.id} className="relative rounded-2xl bg-brand-cardbg p-4 shadow-md ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg">
+                    {s.hasUnread && <span className="absolute left-4 top-4 h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_0_3px_rgba(239,68,68,0.2)]" title="הודעה חדשה שלא נענתה" />}
 
                     <div className="mb-2 text-sm font-bold text-brand-text">{s.full_name}</div>
                     <div className="mb-3 text-xs text-brand-textsoft">{s.phone}</div>
@@ -389,10 +400,13 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
                     <div className="mb-3">
                       <div className="mb-1 flex items-center justify-between text-xs font-bold text-brand-textsoft">
                         <span>התקדמות</span>
-                        <span>{s.progress}%</span>
+                        <span className="text-brand-text">{s.progress}%</span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-brand-category">
-                        <div className="h-full rounded-full bg-brand-linktext" style={{ width: `${s.progress}%` }} />
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${s.progress}%`, background: 'linear-gradient(90deg, var(--header-grad-from), var(--header-grad-to))' }}
+                        />
                       </div>
                     </div>
 
@@ -404,7 +418,11 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
                     )}
 
                     <div className="flex gap-2">
-                      <button onClick={() => setChatStudent(s)} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-brand-name py-2 text-xs font-bold text-brand-text">
+                      <button
+                        onClick={() => setChatStudent(s)}
+                        className="flex flex-1 items-center justify-center gap-1 rounded-lg py-2 text-xs font-bold text-white shadow-sm transition hover:shadow-md"
+                        style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
+                      >
                         <Icon icon="solar:chat-round-dots-bold" width={14} />
                         צ&apos;אט
                       </button>
@@ -460,7 +478,8 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
                 <button
                   onClick={addAssignment}
                   disabled={savingAssignment || !assignTitle.trim()}
-                  className="rounded-xl bg-brand-name px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-60"
+                  className="rounded-xl px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-px hover:shadow-md disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
                 >
                   הוסף
                 </button>
@@ -540,7 +559,8 @@ export default function MentorClassDetailPage({ params }: { params: Promise<{ id
               <button
                 onClick={saveSettings}
                 disabled={savingSettings}
-                className="rounded-xl bg-brand-name px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-60"
+                className="rounded-xl px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-px hover:shadow-md disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
               >
                 {savingSettings ? 'שומר...' : 'שמור שינויים'}
               </button>

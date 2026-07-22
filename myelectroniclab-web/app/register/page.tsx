@@ -1,5 +1,9 @@
-// Version: 1.4
-// Title: Registration Page | Change from v1.3: now checks whether Supabase
+// Version: 1.5
+// Title: Registration Page | Change from v1.4: UI/UX refinement pass (visual
+// only, no behavior change) - added AuthBrandHeader above both the form and
+// the "check your email" screen, gradient top accent bar (via a `before:`
+// pseudo-element, no extra DOM nesting) + gradient submit button, matching
+// the rest of the auth-page family. Change from v1.3: now checks whether Supabase
 // actually returned a session after signUp - with "Confirm email" turned
 // back on, it won't (the user isn't logged in until they click the emailed
 // link), so a new "בדוק את המייל שלך" screen shows instead of silently
@@ -19,10 +23,13 @@ import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
 import { AVATAR_ICONS, DEFAULT_AVATAR_KEY } from '@/lib/avatar-icons';
+import AuthBrandHeader from '@/components/AuthBrandHeader';
 
 const inputClass =
-  'w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none focus:border-brand-name';
+  'w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-name focus:ring-2 focus:ring-brand-name/40';
 const labelClass = 'mb-1 block text-xs font-bold text-brand-textsoft';
+const cardClass =
+  "relative overflow-hidden rounded-2xl bg-brand-cardbg p-8 shadow-xl ring-1 ring-black/5 before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-[linear-gradient(90deg,var(--header-grad-from),var(--header-grad-to))] before:content-['']";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -83,7 +90,9 @@ export default function RegisterPage() {
   if (checkEmail) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-brand-bg p-4" dir="rtl">
-        <div className="w-full max-w-sm rounded-2xl bg-brand-cardbg p-8 text-center shadow-lg">
+        <div className="w-full max-w-sm">
+          <AuthBrandHeader />
+          <div className={`${cardClass} text-center`}>
           <Icon icon="solar:letter-bold" width={44} className="mx-auto mb-3 text-brand-linktext" />
           <h1 className="mb-2 text-lg font-bold text-brand-text">כמעט סיימת!</h1>
           <p className="mb-2 text-sm text-brand-textsoft">
@@ -94,6 +103,7 @@ export default function RegisterPage() {
               בנוסף לאימות המייל, חשבון מנחה דורש גם אישור ידני של האדמין - נעדכן אותך כשהחשבון יופעל.
             </p>
           )}
+          </div>
         </div>
       </div>
     );
@@ -101,7 +111,9 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand-bg p-4" dir="rtl">
-      <div className="w-full max-w-md rounded-2xl bg-brand-cardbg p-8 shadow-lg">
+      <div className="w-full max-w-md">
+        <AuthBrandHeader />
+        <div className={cardClass}>
         <h1 className="mb-1 text-center text-lg font-bold text-brand-text">
           <Icon icon="solar:user-plus-bold" width={22} className="inline" /> הרשמה
         </h1>
@@ -192,7 +204,8 @@ export default function RegisterPage() {
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="mt-1 w-full rounded-xl bg-brand-name py-2.5 text-sm font-bold text-brand-text disabled:opacity-60"
+            className="mt-1 w-full rounded-xl py-2.5 text-sm font-bold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg disabled:opacity-60"
+            style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
           >
             {submitting ? 'נרשם...' : 'הרשמה'}
           </button>
@@ -203,6 +216,7 @@ export default function RegisterPage() {
               התחבר כאן
             </a>
           </p>
+        </div>
         </div>
       </div>
     </div>

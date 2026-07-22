@@ -1,9 +1,12 @@
-// Version: 1.0
-// Title: Reset Password Page | Important Data: reached via the link in the
-// recovery email sent from /forgot-password. @supabase/ssr's browser client
-// detects the recovery token in the URL and fires a PASSWORD_RECOVERY
-// auth event - we wait for that (or an existing recovery session) before
-// showing the form, then call auth.updateUser({ password }).
+// Version: 1.1
+// Title: Reset Password Page | Change from v1.0: UI/UX refinement pass
+// (visual only) - AuthBrandHeader + gradient accent bar/button on the "done"
+// and form screens, matching the rest of the auth-page family. Important
+// Data: reached via the link in the recovery email sent from
+// /forgot-password. @supabase/ssr's browser client detects the recovery
+// token in the URL and fires a PASSWORD_RECOVERY auth event - we wait for
+// that (or an existing recovery session) before showing the form, then call
+// auth.updateUser({ password }).
 
 'use client';
 
@@ -11,9 +14,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
+import AuthBrandHeader from '@/components/AuthBrandHeader';
 
 const inputClass =
-  'w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none focus:border-brand-name';
+  'w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-name focus:ring-2 focus:ring-brand-name/40';
+const cardClass =
+  "relative overflow-hidden rounded-2xl bg-brand-cardbg p-8 shadow-xl ring-1 ring-black/5 before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-[linear-gradient(90deg,var(--header-grad-from),var(--header-grad-to))] before:content-['']";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -77,9 +83,12 @@ export default function ResetPasswordPage() {
   if (done) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-brand-bg p-4" dir="rtl">
-        <div className="w-full max-w-sm rounded-2xl bg-brand-cardbg p-8 text-center shadow-lg">
+        <div className="w-full max-w-sm">
+          <AuthBrandHeader />
+          <div className={`${cardClass} text-center`}>
           <Icon icon="solar:check-circle-bold" width={44} className="mx-auto mb-3 text-green-500" />
           <h1 className="text-lg font-bold text-brand-text">הסיסמה עודכנה!</h1>
+          </div>
         </div>
       </div>
     );
@@ -87,7 +96,9 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand-bg p-4" dir="rtl">
-      <div className="w-full max-w-sm rounded-2xl bg-brand-cardbg p-8 shadow-lg">
+      <div className="w-full max-w-sm">
+        <AuthBrandHeader />
+        <div className={cardClass}>
         <h1 className="mb-1 text-center text-lg font-bold text-brand-text">קביעת סיסמה חדשה</h1>
         <p className="mb-5 text-center text-sm text-brand-textsoft">בחר סיסמה חדשה לחשבון שלך</p>
 
@@ -113,10 +124,12 @@ export default function ResetPasswordPage() {
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="mt-1 w-full rounded-xl bg-brand-name py-2.5 text-sm font-bold text-brand-text disabled:opacity-60"
+            className="mt-1 w-full rounded-xl py-2.5 text-sm font-bold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg disabled:opacity-60"
+            style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
           >
             {submitting ? 'מעדכן...' : 'עדכן סיסמה'}
           </button>
+        </div>
         </div>
       </div>
     </div>

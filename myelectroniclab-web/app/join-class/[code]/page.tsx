@@ -1,5 +1,7 @@
-// Version: 1.0
-// Title: Join Class By Link | Important Data: this is what a mentor's
+// Version: 1.1
+// Title: Join Class By Link | Change from v1.0: UI/UX refinement pass (visual
+// only) - AuthBrandHeader + gradient accent bar/button on every non-loading
+// screen, matching the rest of the auth-page family. Important Data: this is what a mentor's
 // shareable link (/join-class/[code]) opens to - unlike the manual code-entry
 // flow at /join-class, this shows a confirmation card ("כיתה X, מנחה Y") via
 // the get_class_by_code() preview RPC BEFORE joining, so the student knows
@@ -15,6 +17,10 @@ import { useEffect, useState, use as usePromise } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
+import AuthBrandHeader from '@/components/AuthBrandHeader';
+
+const cardClass =
+  "relative overflow-hidden rounded-2xl bg-brand-cardbg p-8 text-center shadow-xl ring-1 ring-black/5 before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-[linear-gradient(90deg,var(--header-grad-from),var(--header-grad-to))] before:content-['']";
 
 type Preview = { class_name: string; description: string; mentor_name: string };
 
@@ -74,10 +80,13 @@ export default function JoinClassByLinkPage({ params }: { params: Promise<{ code
   if (notFound) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-brand-bg p-4" dir="rtl">
-        <div className="w-full max-w-sm rounded-2xl bg-brand-cardbg p-8 text-center shadow-lg">
+        <div className="w-full max-w-sm">
+          <AuthBrandHeader />
+          <div className={cardClass}>
           <Icon icon="solar:danger-triangle-bold" width={44} className="mx-auto mb-3 text-red-500" />
           <h1 className="mb-2 text-lg font-bold text-brand-text">קישור לא תקין</h1>
           <p className="text-sm text-brand-textsoft">הכיתה לא נמצאה - ייתכן שהקישור פג תוקף.</p>
+          </div>
         </div>
       </div>
     );
@@ -86,13 +95,16 @@ export default function JoinClassByLinkPage({ params }: { params: Promise<{ code
   if (joined) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-brand-bg p-4" dir="rtl">
-        <div className="w-full max-w-sm rounded-2xl bg-brand-cardbg p-8 text-center shadow-lg">
+        <div className="w-full max-w-sm">
+          <AuthBrandHeader />
+          <div className={cardClass}>
           <Icon icon="solar:check-circle-bold" width={44} className="mx-auto mb-3 text-green-500" />
           <h1 className="mb-2 text-lg font-bold text-brand-text">הצטרפת בהצלחה!</h1>
           <p className="mb-4 text-sm text-brand-textsoft">אתה עכשיו חלק מהכיתה &quot;{preview?.class_name}&quot;</p>
           <button onClick={() => router.push('/my-class')} className="text-sm font-bold text-brand-linktext hover:underline">
             למעבר לכיתה שלי
           </button>
+          </div>
         </div>
       </div>
     );
@@ -100,7 +112,9 @@ export default function JoinClassByLinkPage({ params }: { params: Promise<{ code
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand-bg p-4" dir="rtl">
-      <div className="w-full max-w-sm rounded-2xl bg-brand-cardbg p-8 text-center shadow-lg">
+      <div className="w-full max-w-sm">
+        <AuthBrandHeader />
+        <div className={cardClass}>
         <Icon icon="solar:users-group-two-rounded-bold" width={44} className="mx-auto mb-3 text-brand-linktext" />
         <h1 className="mb-1 text-lg font-bold text-brand-text">הצעת הצטרפות לכיתה</h1>
         <p className="mb-4 text-sm text-brand-textsoft">קיבלת קישור להצטרפות לכיתה הבאה:</p>
@@ -116,10 +130,12 @@ export default function JoinClassByLinkPage({ params }: { params: Promise<{ code
         <button
           onClick={handleJoin}
           disabled={joining}
-          className="w-full rounded-xl bg-brand-name py-2.5 text-sm font-bold text-brand-text disabled:opacity-60"
+          className="w-full rounded-xl py-2.5 text-sm font-bold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg disabled:opacity-60"
+          style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
         >
           {joining ? 'מצטרף...' : 'הצטרף לכיתה'}
         </button>
+        </div>
       </div>
     </div>
   );

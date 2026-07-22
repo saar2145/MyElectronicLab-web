@@ -1,5 +1,7 @@
-// Version: 1.3
-// Title: Join Class Page | Change from v1.2: simplified back to a pure join
+// Version: 1.4
+// Title: Join Class Page | Change from v1.3: UI/UX refinement pass (visual
+// only) - AuthBrandHeader + gradient accent bar/button, matching the rest of
+// the auth-page family. Change from v1.2: simplified back to a pure join
 // form - the "already joined, here's my class" branch moved to the new
 // dedicated /my-class page, since UserMenu now routes "הכיתה שלי" straight
 // there instead of through here. On success, redirects to /my-class instead
@@ -14,6 +16,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
+import AuthBrandHeader from '@/components/AuthBrandHeader';
 
 export default function JoinClassPage() {
   const router = useRouter();
@@ -49,7 +52,9 @@ export default function JoinClassPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand-bg p-4" dir="rtl">
-      <div className="w-full max-w-sm rounded-2xl bg-brand-cardbg p-8 text-center shadow-lg">
+      <div className="w-full max-w-sm">
+        <AuthBrandHeader />
+        <div className="relative overflow-hidden rounded-2xl bg-brand-cardbg p-8 text-center shadow-xl ring-1 ring-black/5 before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-[linear-gradient(90deg,var(--header-grad-from),var(--header-grad-to))] before:content-['']">
         {joinedName ? (
           <>
             <Icon icon="solar:check-circle-bold" width={44} className="mx-auto mb-3 text-green-500" />
@@ -80,12 +85,14 @@ export default function JoinClassPage() {
             <button
               onClick={handleSubmit}
               disabled={submitting || !code.trim()}
-              className="w-full rounded-xl bg-brand-name py-2.5 text-sm font-bold text-brand-text disabled:opacity-60"
+              className="w-full rounded-xl py-2.5 text-sm font-bold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
             >
               {submitting ? 'מצטרף...' : 'הצטרף לכיתה'}
             </button>
           </>
         )}
+        </div>
       </div>
     </div>
   );

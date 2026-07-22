@@ -1,5 +1,8 @@
-// Version: 1.1
-// Title: My Class Page | Change from v1.0: opening the messages tab now calls
+// Version: 1.2
+// Title: My Class Page | Change from v1.1: UI/UX refinement pass (visual
+// only, no behavior/logic change) - class header card gets a gradient accent
+// bar, tab pills and the send/chat bubbles use the brand gradient instead of
+// a flat fill. Change from v1.0: opening the messages tab now calls
 // student_mark_class_read() (see supabase_schema_v1.14_student_read.sql) -
 // this is what clears the yellow/red dot on the header avatar in UserMenu.
 // Important Data: this is the direct destination for "הכיתה שלי" in UserMenu
@@ -179,7 +182,7 @@ export default function MyClassPage() {
           חזרה לקטלוג
         </button>
 
-        <div className="mb-4 rounded-2xl bg-brand-cardbg p-6 text-right shadow-lg">
+        <div className="relative mb-4 overflow-hidden rounded-2xl bg-brand-cardbg p-6 text-right shadow-xl ring-1 ring-black/5 before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-[linear-gradient(90deg,var(--header-grad-from),var(--header-grad-to))] before:content-['']">
           {classes.length > 1 && (
             <select
               value={selectedId}
@@ -201,7 +204,8 @@ export default function MyClassPage() {
         <div className="mb-4 flex gap-2">
           <button
             onClick={() => setSection('tasks')}
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${section === 'tasks' ? 'bg-brand-name text-brand-text' : 'bg-brand-cardbg text-brand-textsoft'}`}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-sm transition ${section === 'tasks' ? 'text-white shadow-md' : 'bg-brand-cardbg text-brand-textsoft hover:text-brand-text'}`}
+            style={section === 'tasks' ? { background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' } : undefined}
           >
             <Icon icon="solar:checklist-minimalistic-bold" width={16} />
             מטלות
@@ -212,7 +216,8 @@ export default function MyClassPage() {
               const supabase = getSupabaseAuthClient();
               supabase.rpc('student_mark_class_read', { p_class_id: selectedId });
             }}
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${section === 'messages' ? 'bg-brand-name text-brand-text' : 'bg-brand-cardbg text-brand-textsoft'}`}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-sm transition ${section === 'messages' ? 'text-white shadow-md' : 'bg-brand-cardbg text-brand-textsoft hover:text-brand-text'}`}
+            style={section === 'messages' ? { background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' } : undefined}
           >
             <Icon icon="solar:chat-round-dots-bold" width={16} />
             הודעות
@@ -220,7 +225,7 @@ export default function MyClassPage() {
         </div>
 
         {section === 'tasks' && (
-          <div className="rounded-2xl bg-brand-cardbg p-6 shadow-lg">
+          <div className="rounded-2xl bg-brand-cardbg p-6 shadow-lg ring-1 ring-black/5">
             <h2 className="mb-3 text-sm font-bold text-brand-text">מטלות כיתתיות</h2>
             {assignments.length === 0 ? (
               <p className="py-6 text-center text-xs text-brand-textsoft">אין עדיין מטלות</p>
@@ -264,7 +269,7 @@ export default function MyClassPage() {
         )}
 
         {section === 'messages' && (
-          <div className="rounded-2xl bg-brand-cardbg p-6 shadow-lg">
+          <div className="rounded-2xl bg-brand-cardbg p-6 shadow-lg ring-1 ring-black/5">
             <div className="mb-4 flex max-h-96 flex-col gap-2 overflow-y-auto">
               {chatItems.length === 0 ? (
                 <p className="py-6 text-center text-xs text-brand-textsoft">אין עדיין הודעות</p>
@@ -272,13 +277,14 @@ export default function MyClassPage() {
                 chatItems.map((n) => (
                   <div
                     key={n.id}
-                    className={`max-w-[80%] rounded-xl p-2.5 text-xs ${
-                      n.sender === 'student' ? 'self-end bg-brand-name text-brand-text' : 'self-start border border-brand-category bg-brand-bg text-brand-text'
+                    className={`max-w-[80%] rounded-xl p-2.5 text-xs shadow-sm ${
+                      n.sender === 'student' ? 'self-end text-white' : 'self-start border border-brand-category bg-brand-bg text-brand-text'
                     }`}
+                    style={n.sender === 'student' ? { background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' } : undefined}
                   >
-                    <div className="mb-0.5 font-bold text-brand-textsoft">{n.sender === 'student' ? 'אני' : mentorNames[cls.mentor_id] ?? 'המנחה'}</div>
+                    <div className={`mb-0.5 font-bold ${n.sender === 'student' ? 'text-white/80' : 'text-brand-textsoft'}`}>{n.sender === 'student' ? 'אני' : mentorNames[cls.mentor_id] ?? 'המנחה'}</div>
                     <div>{n.content}</div>
-                    {n.due_date && <div className="mt-1 text-brand-textsoft">עד {n.due_date}</div>}
+                    {n.due_date && <div className={`mt-1 ${n.sender === 'student' ? 'text-white/80' : 'text-brand-textsoft'}`}>עד {n.due_date}</div>}
                   </div>
                 ))
               )}
@@ -290,12 +296,13 @@ export default function MyClassPage() {
                 onChange={(e) => setMessageText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                 placeholder="כתוב הודעה למנחה..."
-                className="flex-1 rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none"
+                className="flex-1 rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-name focus:ring-2 focus:ring-brand-name/40"
               />
               <button
                 onClick={sendMessage}
                 disabled={sending || !messageText.trim()}
-                className="rounded-lg bg-brand-name px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-60"
+                className="rounded-lg px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-px hover:shadow-md disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
               >
                 שלח
               </button>

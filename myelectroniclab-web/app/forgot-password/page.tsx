@@ -1,5 +1,7 @@
-// Version: 1.0
-// Title: Forgot Password Page | Important Data: sends a Supabase recovery
+// Version: 1.1
+// Title: Forgot Password Page | Change from v1.0: UI/UX refinement pass
+// (visual only) - AuthBrandHeader + gradient accent bar/button, matching the
+// rest of the auth-page family. Important Data: sends a Supabase recovery
 // email via resetPasswordForEmail, redirecting the emailed link to
 // /reset-password. Requires Supabase's built-in email rate limit to not be
 // exceeded (or a custom SMTP provider configured) - see chat notes on the
@@ -10,9 +12,12 @@
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
+import AuthBrandHeader from '@/components/AuthBrandHeader';
 
 const inputClass =
-  'w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none focus:border-brand-name';
+  'w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-name focus:ring-2 focus:ring-brand-name/40';
+const cardClass =
+  "relative overflow-hidden rounded-2xl bg-brand-cardbg p-8 text-center shadow-xl ring-1 ring-black/5 before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-[linear-gradient(90deg,var(--header-grad-from),var(--header-grad-to))] before:content-['']";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -44,7 +49,9 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand-bg p-4" dir="rtl">
-      <div className="w-full max-w-sm rounded-2xl bg-brand-cardbg p-8 text-center shadow-lg">
+      <div className="w-full max-w-sm">
+        <AuthBrandHeader />
+        <div className={cardClass}>
         {sent ? (
           <>
             <Icon icon="solar:letter-bold" width={44} className="mx-auto mb-3 text-brand-linktext" />
@@ -73,7 +80,8 @@ export default function ForgotPasswordPage() {
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="w-full rounded-xl bg-brand-name py-2.5 text-sm font-bold text-brand-text disabled:opacity-60"
+              className="w-full rounded-xl py-2.5 text-sm font-bold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
             >
               {submitting ? 'שולח...' : 'שלח קישור איפוס'}
             </button>
@@ -85,6 +93,7 @@ export default function ForgotPasswordPage() {
             </p>
           </>
         )}
+        </div>
       </div>
     </div>
   );
