@@ -1053,8 +1053,15 @@ function AddProductSection() {
   );
 }
 
-// Version: 1.0
-// Title: Category Structure Section | Important Data: lets an admin reorder
+// Version: 1.1
+// Title: Category Structure Section | Change from v1.0: FIX - reload() now
+// checks res.ok and surfaces the real API error instead of silently
+// swallowing it and just re-fetching (was showing a confusing "goes pale,
+// then reverts with no message" - the actual failure, found via Supabase
+// project logs, was that products.id has no DB-side default at all; see
+// supabase_schema migration that adds a sequence default for it. That was
+// the real root cause, this fix is just for future real errors to surface
+// properly). Important Data: lets an admin reorder
 // products/blanks/subcategories within one category (↑/↓ swap via
 // /api/admin/products/reorder), insert a blank grid-cell placeholder or a new
 // subcategory at any gap (/blank, /subcategory), move an existing product or
@@ -1125,6 +1132,7 @@ function CategoryStructureSection() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   const [insertGap, setInsertGap] = useState<InsertGap>(null);
   const [newSubcatTitle, setNewSubcatTitle] = useState('');
@@ -1176,7 +1184,20 @@ function CategoryStructureSection() {
 
   async function reload(action: () => Promise<Response>) {
     setBusy(true);
-    await action();
+    setError('');
+    try {
+      const res = await action();
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        setError(json?.error || `שגיאה (${res.status}).`);
+        setBusy(false);
+        return;
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'שגיאת רשת.');
+      setBusy(false);
+      return;
+    }
     await load();
     setBusy(false);
   }
@@ -1259,6 +1280,10 @@ function CategoryStructureSection() {
       <p className="mb-4 text-xs text-brand-textsoft">
         סידור, תאים ריקים, תתי-קטגוריות והעברה בין קטגוריות - שינויי מבנה בלבד, לא עריכת תוכן (לעריכת מוצר עצמו: טאב &quot;הוספת מוצרים&quot;).
       </p>
+
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-500/10 px-3 py-2 text-xs font-bold text-red-600">{error}</p>
+      )}
 
       <select
         value={selectedCategory}
