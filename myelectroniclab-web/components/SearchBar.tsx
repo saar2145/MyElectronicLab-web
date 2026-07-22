@@ -1,5 +1,7 @@
-// Version: 3.1
-// Title: Search Bar | Important Data: FIX v3.1 - added explicit w-full + self-center
+// Version: 3.2
+// Title: Search Bar | Change from v3.1: UI/UX refinement pass (visual only) -
+// added a resting shadow that strengthens on focus for more depth.
+// Important Data: FIX v3.1 - added explicit w-full + self-center
 // to the wrapper div. In the header's flex-col layout, a plain <div> with only
 // max-width (no explicit width) interacts ambiguously with flexbox's default
 // align-items:stretch, causing it to shrink to a much narrower width than
@@ -26,7 +28,7 @@ export default function SearchBar({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="חיפוש לפי שם, דגם או קטגוריה..."
-        className="w-full rounded-full bg-white/90 py-3 pl-5 pr-11 text-sm text-[#091e3a] placeholder:text-[#4e6e92] focus:outline-none focus:ring-2 focus:ring-white"
+        className="w-full rounded-full bg-white/90 py-3 pl-5 pr-11 text-sm text-[#091e3a] shadow-md placeholder:text-[#4e6e92] transition focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-white"
       />
       <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-[#4e6e92]">
         <Icon icon="solar:magnifer-bold" width={17} />

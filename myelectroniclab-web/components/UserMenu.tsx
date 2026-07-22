@@ -1,5 +1,7 @@
-// Version: 1.6
-// Title: User Menu (Header) | Change from v1.5: added a colored dot on the
+// Version: 1.7
+// Title: User Menu (Header) | Change from v1.6: UI/UX refinement pass (visual
+// only) - avatar/login button and dropdown items get a hover lift/shadow to
+// match the rest of the header nav. Change from v1.5: added a colored dot on the
 // avatar for students - red = something overdue (unfinished class assignment
 // or personal task past its due date), yellow = unread mentor message or any
 // unfinished task/assignment without being overdue yet, green = all clear.
@@ -129,7 +131,7 @@ export default function UserMenu() {
     return (
       <a
         href="/login"
-        className="flex shrink-0 items-center gap-2 rounded-full bg-brand-cardbg px-4 py-3 text-base font-bold text-brand-text shadow-md transition hover:brightness-95 sm:px-6 sm:text-lg"
+        className="flex shrink-0 items-center gap-2 rounded-full bg-brand-cardbg px-4 py-3 text-base font-bold text-brand-text shadow-md transition hover:-translate-y-0.5 hover:shadow-lg hover:brightness-95 sm:px-6 sm:text-lg"
       >
         <Icon icon="solar:login-2-bold" width={22} />
         <span>התחברות</span>
@@ -142,7 +144,7 @@ export default function UserMenu() {
       <button
         onClick={() => setOpen((v) => !v)}
         title={profile.full_name}
-        className="relative flex h-11 w-11 items-center justify-center rounded-full bg-brand-cardbg shadow-md ring-2 ring-brand-picture transition hover:brightness-95"
+        className="relative flex h-11 w-11 items-center justify-center rounded-full bg-brand-cardbg shadow-md ring-2 ring-brand-picture transition hover:-translate-y-0.5 hover:shadow-lg hover:brightness-95"
       >
         <Icon icon={getAvatarIcon(profile.avatar_icon)} width={24} className="text-brand-text" />
         {dot && <span className={`absolute -left-0.5 -top-0.5 h-3.5 w-3.5 rounded-full ring-2 ring-brand-cardbg ${DOT_CLASS[dot]}`} />}

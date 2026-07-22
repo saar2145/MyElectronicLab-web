@@ -1,5 +1,7 @@
-// Version: 1.0
-// Title: FAB Group | Important Data: bottom-left floating buttons. On mobile
+// Version: 1.1
+// Title: FAB Group | Change from v1.0: UI/UX refinement pass (visual only, no
+// behavior change) - added hover lift/shadow so the buttons feel interactive
+// on desktop. Important Data: bottom-left floating buttons. On mobile
 // (<768px, detected via matchMedia), first tap expands ALL labels together,
 // second tap on the SAME button executes the action - exact behavior from the
 // original Index.html mobile FAB pattern.
@@ -75,7 +77,7 @@ export default function FabGroup({
         <button
           key={btn.label}
           onClick={() => handleClick(btn.onClick)}
-          className={`flex items-center gap-2 rounded-full px-3.5 py-2.5 text-sm font-bold shadow-lg transition ${
+          className={`flex items-center gap-2 rounded-full px-3.5 py-2.5 text-sm font-bold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl ${
             btn.variant === 'primary'
               ? 'text-white'
               : btn.variant === 'secondary'

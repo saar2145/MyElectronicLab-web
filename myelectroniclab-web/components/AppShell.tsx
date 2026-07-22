@@ -1,10 +1,14 @@
-// Version: 2.4
-// Title: App Shell | Change from v2.3: reads ?product=ID on mount and opens
-// that product's modal automatically - this is what makes ProductModal's new
-// "העתק קישור" (share link) button actually work; without this the copied
-// link did nothing when visited. Important Data: full integration - banner,
-// theme toggle, FAB group (chat/ticket/about), all modals, refresh via
-// router.refresh().
+// Version: 2.6
+// Title: App Shell | Change from v2.5: UI/UX refinement pass (visual only) -
+// header gets a subtle bottom hairline + stronger shadow for a "glass bar"
+// feel, nav buttons get a hover lift. Change from v2.4: removed the local
+// copyright <footer> - it now renders once globally from app/layout.tsx
+// (components/Footer.tsx) so it appears on every route, not just "/". Change
+// from v2.3: reads ?product=ID on mount and opens that product's modal
+// automatically - this is what makes ProductModal's new "העתק קישור" (share
+// link) button actually work; without this the copied link did nothing when
+// visited. Important Data: full integration - banner, theme toggle, FAB group
+// (chat/ticket/about), all modals, refresh via router.refresh().
 
 'use client';
 
@@ -31,7 +35,7 @@ import UserMenu from './UserMenu';
 function HeaderNav({ setView }: { setView: (v: 'catalog' | 'cart') => void }) {
   const { totalCount } = useCart();
   const btnClass =
-    'flex shrink-0 items-center gap-2 rounded-full bg-brand-cardbg px-4 py-3 text-base font-bold text-brand-text shadow-md transition hover:brightness-95 sm:px-6 sm:text-lg';
+    'flex shrink-0 items-center gap-2 rounded-full bg-brand-cardbg px-4 py-3 text-base font-bold text-brand-text shadow-md transition hover:-translate-y-0.5 hover:shadow-lg hover:brightness-95 sm:px-6 sm:text-lg';
 
   return (
     <div className="relative flex min-h-[72px] items-center justify-between gap-2 sm:min-h-[92px] md:min-h-[118px]">
@@ -108,7 +112,7 @@ function ShellInner({ rows }: { rows: ProductRow[] }) {
   return (
     <div className="min-h-screen bg-brand-bg">
       <header
-        className="isolate sticky top-0 z-50 box-border flex flex-col gap-2 overflow-visible px-3 pt-3 pb-2.5 shadow-lg"
+        className="isolate sticky top-0 z-50 box-border flex flex-col gap-2 overflow-visible border-b border-white/10 px-3 pt-3 pb-2.5 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.35)]"
         style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
       >
         <HeaderNav setView={setView} />
@@ -134,11 +138,6 @@ function ShellInner({ rows }: { rows: ProductRow[] }) {
       ) : (
         <CartView onBack={() => setView('catalog')} />
       )}
-
-      <footer className="pb-24 pt-6 text-center text-xs text-brand-textsoft">
-        <div className="opacity-60">כל הזכויות שמורות. © 2026 MyElectronicLab</div>
-        <div className="mt-1 opacity-30">By Saar Cohen</div>
-      </footer>
 
       <FabGroup
         onOpenChat={() => setModal('chat')}

@@ -1,10 +1,12 @@
-// Version: 4.1
-// Title: Product Card | Change from v4.0: swapped the price/buy-link order in
-// the row - price now renders on the right, buy button on the left (was
-// reversed). Important Data: Iconify icons, dark-mode aware background
-// (bg-brand-cardbg). Buy/add buttons use --header-grad-from as a solid color
-// (matches the reference's dark navy buttons - no existing brand token was
-// that dark).
+// Version: 4.2
+// Title: Product Card | Change from v4.1: UI/UX refinement pass (visual only,
+// no logic/feature changes) - buy/add buttons now use a header-gradient
+// (--header-grad-from -> --header-grad-to) instead of a flat fill, card gets
+// a resting shadow (not just on hover) and a slightly stronger hover lift, so
+// the grid reads with more depth. Change from v4.0: swapped the price/buy-link
+// order in the row - price now renders on the right, buy button on the left
+// (was reversed). Important Data: Iconify icons, dark-mode aware background
+// (bg-brand-cardbg).
 
 'use client';
 
@@ -43,7 +45,7 @@ export default function ProductCard({
   return (
     <div
       onClick={() => onOpen(product)}
-      className="relative flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-brand-cardbg shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lg hover:ring-brand-link"
+      className="relative flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-brand-cardbg shadow-md ring-1 ring-black/5 transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:ring-brand-link"
     >
       {flash && (
         <div className="flash-added-overlay pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-green-500/60 bg-green-500/15">
@@ -90,8 +92,8 @@ export default function ProductCard({
               target="_blank"
               rel="noopener noreferrer sponsored"
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition hover:brightness-110"
-              style={{ background: 'var(--header-grad-from)' }}
+              className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:-translate-y-px hover:shadow-md hover:brightness-110"
+              style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
             >
               <Icon icon="majesticons:open-line" width={13} />
               לקנייה
@@ -101,8 +103,8 @@ export default function ProductCard({
 
         <button
           onClick={handleAdd}
-          className="flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-bold text-white transition hover:brightness-110"
-          style={{ background: 'var(--header-grad-from)' }}
+          className="flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-px hover:shadow-md hover:brightness-110"
+          style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
         >
           <Icon icon="solar:cart-plus-bold" width={16} />
           הוסף לעגלה
