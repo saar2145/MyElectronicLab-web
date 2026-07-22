@@ -48,7 +48,9 @@ type AdminUser = {
   class_name: string | null;
 };
 
-type CategoryOption = { sheet_row: number; title: string | null };
+type SubcategoryOption = { sheet_row: number; title: string | null };
+type CategoryOption = { sheet_row: number; title: string | null; subcategories: SubcategoryOption[] };
+type StructureRow = { id: number; sheet_row: number; row_type: string; category_title: string | null; name: string | null };
 type AdminProduct = {
   id: number;
   name: string | null;
@@ -69,7 +71,7 @@ type OverviewStats = {
   totalStudents: number;
   totalClasses: number;
 };
-type Tab = 'overview' | 'tickets' | 'mentors' | 'mentors-overview' | 'users' | 'add-product' | 'affiliate-check';
+type Tab = 'overview' | 'tickets' | 'mentors' | 'mentors-overview' | 'users' | 'add-product' | 'category-structure' | 'affiliate-check';
 
 const STATUS_COLORS: Record<string, string> = {
   פתוח: 'bg-red-100 text-red-800',
@@ -731,12 +733,26 @@ function AddProductSection() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ categorySheetRow: '', name: '', model: '', price: '', description: '', link: '', image_url: '' });
+  const [form, setForm] = useState({
+    categorySheetRow: '',
+    subcategorySheetRow: '',
+    name: '',
+    model: '',
+    price: '',
+    description: '',
+    link: '',
+    image_url: '',
+  });
   const [status, setStatus] = useState<{ type: 'error' | 'success'; msg: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [gridSearch, setGridSearch] = useState('');
+
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [newCategoryTitle, setNewCategoryTitle] = useState('');
+  const [newCategorySubtitle, setNewCategorySubtitle] = useState('');
+  const [savingCategory, setSavingCategory] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -769,7 +785,11 @@ function AddProductSection() {
     const res = await fetch('/api/admin/products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, categorySheetRow: Number(form.categorySheetRow) }),
+      body: JSON.stringify({
+        ...form,
+        categorySheetRow: Number(form.categorySheetRow),
+        subcategorySheetRow: form.subcategorySheetRow ? Number(form.subcategorySheetRow) : undefined,
+      }),
     });
 
     setSubmitting(false);
@@ -781,8 +801,29 @@ function AddProductSection() {
     }
 
     setStatus({ type: 'success', msg: 'המוצר נוסף בהצלחה!' });
-    setForm({ categorySheetRow: form.categorySheetRow, name: '', model: '', price: '', description: '', link: '', image_url: '' });
+    setForm((f) => ({ ...f, name: '', model: '', price: '', description: '', link: '', image_url: '' }));
     load();
+  }
+
+  async function createCategory() {
+    if (!newCategoryTitle.trim()) return;
+    setSavingCategory(true);
+    const res = await fetch('/api/admin/products/category', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newCategoryTitle.trim(), subtitle: newCategorySubtitle.trim() || undefined }),
+    });
+    const json = await res.json();
+    setSavingCategory(false);
+    if (!res.ok) {
+      setStatus({ type: 'error', msg: json.error || 'שגיאה ביצירת קטגוריה.' });
+      return;
+    }
+    setNewCategoryTitle('');
+    setNewCategorySubtitle('');
+    setCreatingCategory(false);
+    await load();
+    update('categorySheetRow', String(json.sheet_row));
   }
 
   async function remove(id: number) {
@@ -832,16 +873,76 @@ function AddProductSection() {
           <h2 className="mb-4 text-sm font-bold text-brand-text">מוצר חדש</h2>
           <div className="flex max-w-md flex-col gap-3">
             <div>
-              <label className={labelClass}>קטגוריה</label>
-              <select value={form.categorySheetRow} onChange={(e) => update('categorySheetRow', e.target.value)} className={inputClass}>
-                <option value="">בחר קטגוריה...</option>
-                {categories.map((c) => (
-                  <option key={c.sheet_row} value={c.sheet_row}>
-                    {c.title}
-                  </option>
-                ))}
-              </select>
+              <div className="mb-1 flex items-center justify-between">
+                <label className={labelClass}>קטגוריה</label>
+                <button
+                  type="button"
+                  onClick={() => setCreatingCategory((v) => !v)}
+                  className="mb-1 text-xs font-bold text-brand-linktext hover:underline"
+                >
+                  {creatingCategory ? 'ביטול' : '+ קטגוריה חדשה'}
+                </button>
+              </div>
+
+              {creatingCategory ? (
+                <div className="mb-2 flex flex-col gap-2 rounded-lg border border-brand-category bg-brand-bg p-2.5">
+                  <input
+                    placeholder="כותרת הקטגוריה"
+                    value={newCategoryTitle}
+                    onChange={(e) => setNewCategoryTitle(e.target.value)}
+                    className={inputClass}
+                    autoFocus
+                  />
+                  <input
+                    placeholder="תת-כותרת (אופציונלי)"
+                    value={newCategorySubtitle}
+                    onChange={(e) => setNewCategorySubtitle(e.target.value)}
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    onClick={createCategory}
+                    disabled={savingCategory || !newCategoryTitle.trim()}
+                    className="rounded-lg py-1.5 text-xs font-bold text-white shadow-sm disabled:opacity-60"
+                    style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
+                  >
+                    {savingCategory ? 'יוצר...' : 'צור קטגוריה (תתווסף בסוף הקטלוג)'}
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={form.categorySheetRow}
+                  onChange={(e) => setForm((f) => ({ ...f, categorySheetRow: e.target.value, subcategorySheetRow: '' }))}
+                  className={inputClass}
+                >
+                  <option value="">בחר קטגוריה...</option>
+                  {categories.map((c) => (
+                    <option key={c.sheet_row} value={c.sheet_row}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
+
+            {(() => {
+              const selectedCategory = categories.find((c) => String(c.sheet_row) === form.categorySheetRow);
+              if (!selectedCategory || selectedCategory.subcategories.length === 0) return null;
+              return (
+                <div>
+                  <label className={labelClass}>תת-קטגוריה (אופציונלי)</label>
+                  <select value={form.subcategorySheetRow} onChange={(e) => update('subcategorySheetRow', e.target.value)} className={inputClass}>
+                    <option value="">ללא - מוצר חופשי תחת הקטגוריה</option>
+                    {selectedCategory.subcategories.map((s) => (
+                      <option key={s.sheet_row} value={s.sheet_row}>
+                        {s.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })()}
+
             <div>
               <label className={labelClass}>שם המוצר</label>
               <input value={form.name} onChange={(e) => update('name', e.target.value)} className={inputClass} />
@@ -947,6 +1048,385 @@ function AddProductSection() {
             load();
           }}
         />
+      )}
+    </div>
+  );
+}
+
+// Version: 1.0
+// Title: Category Structure Section | Important Data: lets an admin reorder
+// products/blanks/subcategories within one category (↑/↓ swap via
+// /api/admin/products/reorder), insert a blank grid-cell placeholder or a new
+// subcategory at any gap (/blank, /subcategory), move an existing product or
+// blank to a different category/subcategory (/move), and delete a
+// product/blank row. Deliberately does NOT support reordering/deleting the
+// category heading itself, or moving a subcategory heading with its
+// products - see the plan discussed with the user for why (scoped out of
+// this pass). Reuses the same GET /api/admin/products response as
+// AddProductSection (its `rows` field - the full raw sheet_row-ordered list,
+// added in v1.2 specifically for this tab).
+type InsertGap = { beforeSheetRow: number | null } | null;
+
+// קומפוננטה נפרדת ברמת המודול (לא בתוך ה-render של CategoryStructureSection) -
+// אחרת ה-input של כותרת תת-הקטגוריה מאבד פוקוס בכל הקשה, כי React הופך אותה
+// לקומפוננטה חדשה (זהות פונקציה חדשה) בכל רינדור מחדש של ההורה.
+function InsertDivider({
+  open,
+  onToggle,
+  newSubcatTitle,
+  onSubcatTitleChange,
+  onInsertBlank,
+  onInsertSubcategory,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  newSubcatTitle: string;
+  onSubcatTitleChange: (v: string) => void;
+  onInsertBlank: () => void;
+  onInsertSubcategory: () => void;
+}) {
+  return (
+    <div className="relative my-0.5">
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center justify-center rounded py-0.5 text-brand-textsoft/40 opacity-0 transition hover:bg-brand-bg hover:text-brand-linktext hover:opacity-100"
+        title="הוסף כאן"
+      >
+        <Icon icon="solar:add-circle-bold" width={16} />
+      </button>
+      {open && (
+        <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-brand-category bg-brand-bg p-2.5">
+          <button onClick={onInsertBlank} className="rounded-lg bg-brand-cardbg px-3 py-1.5 text-xs font-bold text-brand-text shadow-sm">
+            + תא ריק
+          </button>
+          <input
+            placeholder="כותרת תת-קטגוריה"
+            value={newSubcatTitle}
+            onChange={(e) => onSubcatTitleChange(e.target.value)}
+            className="min-w-[140px] flex-1 rounded-lg border border-brand-category bg-brand-cardbg px-2.5 py-1.5 text-xs text-brand-text outline-none"
+          />
+          <button
+            onClick={onInsertSubcategory}
+            disabled={!newSubcatTitle.trim()}
+            className="rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-sm disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
+          >
+            + תת-קטגוריה
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CategoryStructureSection() {
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [rows, setRows] = useState<StructureRow[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const [insertGap, setInsertGap] = useState<InsertGap>(null);
+  const [newSubcatTitle, setNewSubcatTitle] = useState('');
+
+  const [movingId, setMovingId] = useState<number | null>(null);
+  const [moveDestCategory, setMoveDestCategory] = useState('');
+  const [moveDestSubcategory, setMoveDestSubcategory] = useState('');
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch('/api/admin/products');
+    if (res.ok) {
+      const json = await res.json();
+      setCategories(json.categories ?? []);
+      setRows(json.rows ?? []);
+      setSelectedCategory((prev) => prev || String(json.categories?.[0]?.sheet_row ?? ''));
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- טעינת נתונים סטנדרטית ב-mount
+    load();
+  }, []);
+
+  const categorySheetRow = Number(selectedCategory);
+
+  const slice = (() => {
+    if (!selectedCategory) return [] as StructureRow[];
+    const startIdx = rows.findIndex((r) => r.sheet_row === categorySheetRow && r.row_type === 'category');
+    if (startIdx === -1) return [] as StructureRow[];
+    const result: StructureRow[] = [rows[startIdx]];
+    for (let i = startIdx + 1; i < rows.length; i++) {
+      if (rows[i].row_type === 'category') break;
+      result.push(rows[i]);
+    }
+    return result;
+  })();
+
+  let insideSub = false;
+  const movable = slice.slice(1).map((r) => {
+    if (r.row_type === 'subcategory') {
+      insideSub = true;
+      return { ...r, indent: false };
+    }
+    const indent = insideSub;
+    return { ...r, indent };
+  });
+
+  async function reload(action: () => Promise<Response>) {
+    setBusy(true);
+    await action();
+    await load();
+    setBusy(false);
+  }
+
+  function reorder(rowAId: number, rowBId: number) {
+    return reload(() =>
+      fetch('/api/admin/products/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowAId, rowBId }),
+      })
+    );
+  }
+
+  function insertBlank(beforeSheetRow: number | null) {
+    return reload(() =>
+      fetch('/api/admin/products/blank', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categorySheetRow, beforeSheetRow: beforeSheetRow ?? undefined }),
+      })
+    ).then(() => setInsertGap(null));
+  }
+
+  function insertSubcategory(beforeSheetRow: number | null) {
+    if (!newSubcatTitle.trim()) return Promise.resolve();
+    return reload(() =>
+      fetch('/api/admin/products/subcategory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categorySheetRow, beforeSheetRow: beforeSheetRow ?? undefined, title: newSubcatTitle.trim() }),
+      })
+    ).then(() => {
+      setInsertGap(null);
+      setNewSubcatTitle('');
+    });
+  }
+
+  function removeRow(id: number) {
+    if (!confirm('למחוק את השורה הזו לצמיתות?')) return;
+    reload(() =>
+      fetch('/api/admin/products', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+    );
+  }
+
+  function confirmMove(rowId: number) {
+    if (!moveDestCategory) return;
+    reload(() =>
+      fetch('/api/admin/products/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rowId,
+          destCategorySheetRow: Number(moveDestCategory),
+          destSubcategorySheetRow: moveDestSubcategory ? Number(moveDestSubcategory) : undefined,
+        }),
+      })
+    ).then(() => {
+      setMovingId(null);
+      setMoveDestCategory('');
+      setMoveDestSubcategory('');
+    });
+  }
+
+  const rowLabel = (r: StructureRow) => {
+    if (r.row_type === 'subcategory') return r.category_title ?? '(תת-קטגוריה ללא כותרת)';
+    if (r.row_type === 'blank') return null;
+    return r.name ?? '(מוצר ללא שם)';
+  };
+
+  return (
+    <div>
+      <h1 className={sectionTitleClass}>
+        <Icon icon="solar:layers-minimalistic-bold" width={22} /> מבנה קטגוריה
+      </h1>
+      <p className="mb-4 text-xs text-brand-textsoft">
+        סידור, תאים ריקים, תתי-קטגוריות והעברה בין קטגוריות - שינויי מבנה בלבד, לא עריכת תוכן (לעריכת מוצר עצמו: טאב &quot;הוספת מוצרים&quot;).
+      </p>
+
+      <select
+        value={selectedCategory}
+        onChange={(e) => setSelectedCategory(e.target.value)}
+        className="mb-5 w-full max-w-sm rounded-lg border border-brand-category bg-brand-cardbg px-3 py-2 text-sm text-brand-text outline-none sm:w-auto"
+      >
+        {categories.map((c) => (
+          <option key={c.sheet_row} value={c.sheet_row}>
+            {c.title}
+          </option>
+        ))}
+      </select>
+
+      {loading ? (
+        <p className="text-center text-brand-textsoft">טוען...</p>
+      ) : slice.length === 0 ? (
+        <p className="py-16 text-center text-brand-textsoft">בחר קטגוריה</p>
+      ) : (
+        <div className={`${cardClass} ${busy ? 'pointer-events-none opacity-60' : ''}`}>
+          <div className="mb-3 flex items-center gap-2 border-b border-brand-category pb-3">
+            <Icon icon="solar:folder-bold" width={18} className="text-brand-linktext" />
+            <span className="font-bold text-brand-text">{slice[0].category_title}</span>
+            <span className="text-xs text-brand-textsoft">(כותרת הקטגוריה - קבועה בסיבוב הזה)</span>
+          </div>
+
+          <InsertDivider
+            open={insertGap !== null && insertGap.beforeSheetRow === (movable[0]?.sheet_row ?? null)}
+            onToggle={() =>
+              setInsertGap((g) =>
+                g !== null && g.beforeSheetRow === (movable[0]?.sheet_row ?? null) ? null : { beforeSheetRow: movable[0]?.sheet_row ?? null }
+              )
+            }
+            newSubcatTitle={newSubcatTitle}
+            onSubcatTitleChange={setNewSubcatTitle}
+            onInsertBlank={() => insertBlank(movable[0]?.sheet_row ?? null)}
+            onInsertSubcategory={() => insertSubcategory(movable[0]?.sheet_row ?? null)}
+          />
+
+          {movable.length === 0 && <p className="py-8 text-center text-xs text-brand-textsoft">הקטגוריה ריקה - הוסף כאן למעלה</p>}
+
+          {movable.map((r, i) => {
+            const prevId = i > 0 ? movable[i - 1].id : null;
+            const nextId = i < movable.length - 1 ? movable[i + 1].id : null;
+            const label = rowLabel(r);
+            const canMove = r.row_type === 'product' || r.row_type === 'blank';
+
+            return (
+              <div key={r.id}>
+                <div
+                  className={`flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-brand-bg ${r.indent ? 'mr-6' : ''}`}
+                >
+                  <Icon
+                    icon={
+                      r.row_type === 'subcategory'
+                        ? 'solar:folder-open-bold'
+                        : r.row_type === 'blank'
+                          ? 'solar:widget-add-linear'
+                          : 'solar:box-minimalistic-bold'
+                    }
+                    width={16}
+                    className={r.row_type === 'blank' ? 'text-brand-textsoft/50' : 'text-brand-textsoft'}
+                  />
+                  <span className={`flex-1 truncate ${r.row_type === 'subcategory' ? 'font-bold text-brand-text' : 'text-brand-text'} ${!label ? 'italic text-brand-textsoft/60' : ''}`}>
+                    {label ?? '( תא ריק )'}
+                  </span>
+
+                  <button
+                    onClick={() => prevId && reorder(r.id, prevId)}
+                    disabled={!prevId}
+                    title="הזז למעלה"
+                    className="rounded p-1 text-brand-textsoft transition hover:bg-brand-cardbg disabled:opacity-20"
+                  >
+                    <Icon icon="solar:alt-arrow-up-bold" width={15} />
+                  </button>
+                  <button
+                    onClick={() => nextId && reorder(r.id, nextId)}
+                    disabled={!nextId}
+                    title="הזז למטה"
+                    className="rounded p-1 text-brand-textsoft transition hover:bg-brand-cardbg disabled:opacity-20"
+                  >
+                    <Icon icon="solar:alt-arrow-down-bold" width={15} />
+                  </button>
+
+                  {canMove && (
+                    <button
+                      onClick={() => setMovingId(movingId === r.id ? null : r.id)}
+                      title="העבר לקטגוריה אחרת"
+                      className="rounded p-1 text-brand-textsoft transition hover:bg-brand-cardbg"
+                    >
+                      <Icon icon="solar:folder-favourite-bold" width={15} />
+                    </button>
+                  )}
+
+                  {canMove && (
+                    <button
+                      onClick={() => removeRow(r.id)}
+                      title="מחק"
+                      className="rounded p-1 text-red-500 transition hover:bg-red-500/10"
+                    >
+                      <Icon icon="solar:trash-bin-trash-bold" width={15} />
+                    </button>
+                  )}
+                </div>
+
+                {movingId === r.id && (
+                  <div className="mb-2 mr-6 flex flex-wrap items-center gap-2 rounded-lg border border-brand-category bg-brand-bg p-2.5">
+                    <select
+                      value={moveDestCategory}
+                      onChange={(e) => {
+                        setMoveDestCategory(e.target.value);
+                        setMoveDestSubcategory('');
+                      }}
+                      className="rounded-lg border border-brand-category bg-brand-cardbg px-2.5 py-1.5 text-xs text-brand-text outline-none"
+                    >
+                      <option value="">בחר קטגוריית יעד...</option>
+                      {categories.map((c) => (
+                        <option key={c.sheet_row} value={c.sheet_row}>
+                          {c.title}
+                        </option>
+                      ))}
+                    </select>
+                    {(() => {
+                      const destCat = categories.find((c) => String(c.sheet_row) === moveDestCategory);
+                      if (!destCat || destCat.subcategories.length === 0) return null;
+                      return (
+                        <select
+                          value={moveDestSubcategory}
+                          onChange={(e) => setMoveDestSubcategory(e.target.value)}
+                          className="rounded-lg border border-brand-category bg-brand-cardbg px-2.5 py-1.5 text-xs text-brand-text outline-none"
+                        >
+                          <option value="">ללא תת-קטגוריה</option>
+                          {destCat.subcategories.map((s) => (
+                            <option key={s.sheet_row} value={s.sheet_row}>
+                              {s.title}
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()}
+                    <button
+                      onClick={() => confirmMove(r.id)}
+                      disabled={!moveDestCategory}
+                      className="rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-sm disabled:opacity-50"
+                      style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
+                    >
+                      העבר
+                    </button>
+                  </div>
+                )}
+
+                <InsertDivider
+                  open={insertGap !== null && insertGap.beforeSheetRow === (movable[i + 1]?.sheet_row ?? null)}
+                  onToggle={() =>
+                    setInsertGap((g) =>
+                      g !== null && g.beforeSheetRow === (movable[i + 1]?.sheet_row ?? null)
+                        ? null
+                        : { beforeSheetRow: movable[i + 1]?.sheet_row ?? null }
+                    )
+                  }
+                  newSubcatTitle={newSubcatTitle}
+                  onSubcatTitleChange={setNewSubcatTitle}
+                  onInsertBlank={() => insertBlank(movable[i + 1]?.sheet_row ?? null)}
+                  onInsertSubcategory={() => insertSubcategory(movable[i + 1]?.sheet_row ?? null)}
+                />
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -1215,6 +1695,7 @@ const NAV_ITEMS: { tab: Tab; icon: string; label: string }[] = [
   { tab: 'mentors-overview', icon: 'solar:presentation-graph-bold', label: 'מנחים' },
   { tab: 'users', icon: 'solar:users-group-rounded-bold', label: 'משתמשים' },
   { tab: 'add-product', icon: 'solar:box-bold', label: 'הוספת מוצרים' },
+  { tab: 'category-structure', icon: 'solar:layers-minimalistic-bold', label: 'מבנה קטגוריה' },
   { tab: 'affiliate-check', icon: 'solar:link-round-angle-bold', label: 'בדיקת אפיליאט' },
 ];
 
@@ -1285,6 +1766,7 @@ export default function AdminPage() {
         {tab === 'mentors-overview' && <MentorsOverviewSection />}
         {tab === 'users' && <UsersSection />}
         {tab === 'add-product' && <AddProductSection />}
+        {tab === 'category-structure' && <CategoryStructureSection />}
         {tab === 'affiliate-check' && <AffiliateCheckSection />}
       </main>
     </div>

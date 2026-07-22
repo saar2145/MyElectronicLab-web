@@ -1,12 +1,23 @@
-// Version: 2.1
-// Title: Category Section | Change from v2.0: UI/UX refinement pass (visual
-// only) - category header gets a subtle border + left accent bar instead of a
-// flat fill, subgroup pill uses the brand gradient instead of generic
-// slate-500. Important Data: passes onOpen (product click handler) down to
-// every ProductCard so clicking opens the ProductModal.
+// Version: 2.2
+// Title: Category Section | Change from v2.1: renders GridItem entries that
+// are a BlankSlot (admin-placed empty grid cell, see lib/catalog.ts v1.1) as
+// an invisible same-size placeholder instead of a ProductCard - this is what
+// lets an admin control where the responsive grid wraps to a new row. Change
+// from v2.0: UI/UX refinement pass (visual only) - category header gets a
+// subtle border + left accent bar instead of a flat fill, subgroup pill uses
+// the brand gradient instead of generic slate-500. Important Data: passes
+// onOpen (product click handler) down to every ProductCard so clicking opens
+// the ProductModal.
 
-import { CategoryGroup, GroupedProduct } from '@/lib/catalog';
+import { CategoryGroup, GridItem, GroupedProduct } from '@/lib/catalog';
 import ProductCard from './ProductCard';
+
+function GridCell({ item, onOpen }: { item: GridItem; onOpen: (p: GroupedProduct) => void }) {
+  if ('kind' in item) {
+    return <div aria-hidden className="pointer-events-none" />;
+  }
+  return <ProductCard product={item} onOpen={onOpen} />;
+}
 
 export default function CategorySection({
   category,
@@ -31,8 +42,8 @@ export default function CategorySection({
 
       {category.looseProducts.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {category.looseProducts.map((p) => (
-            <ProductCard key={p.id} product={p} onOpen={onOpen} />
+          {category.looseProducts.map((item) => (
+            <GridCell key={'kind' in item ? item.key : item.id} item={item} onOpen={onOpen} />
           ))}
         </div>
       )}
@@ -46,8 +57,8 @@ export default function CategorySection({
             {sub.title}
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {sub.products.map((p) => (
-              <ProductCard key={p.id} product={p} onOpen={onOpen} />
+            {sub.products.map((item) => (
+              <GridCell key={'kind' in item ? item.key : item.id} item={item} onOpen={onOpen} />
             ))}
           </div>
         </div>

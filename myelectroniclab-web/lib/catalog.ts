@@ -1,23 +1,32 @@
-// Version: 1.0
-// Title: Catalog Grouping Logic | Important Data: mirrors render() from Index.html -
-// walks the flat row list (ordered by sheet_row) and nests products under their
-// most recent category/subcategory, exactly like the original Sheets-driven catalog.
+// Version: 1.1
+// Title: Catalog Grouping Logic | Change from v1.0: actually implements
+// row_type==='blank' (was a no-op comment before) - pushes a BlankSlot
+// placeholder into the same looseProducts/subgroup.products list a product
+// would land in, at the same walk-order position. This is what lets an admin
+// insert an empty grid cell to control where the public catalog's responsive
+// grid wraps to a new row (see components/CategorySection.tsx for the render
+// side, and app/api/admin/products/blank/route.ts for how admins create
+// these). Important Data: mirrors render() from Index.html - walks the flat
+// row list (ordered by sheet_row) and nests products under their most recent
+// category/subcategory, exactly like the original Sheets-driven catalog.
 
 import { ProductRow } from './supabase';
 
 export type GroupedProduct = ProductRow & { row_type: 'product' };
+export type BlankSlot = { kind: 'blank'; key: string };
+export type GridItem = GroupedProduct | BlankSlot;
 
 export type CategoryGroup = {
   id: string;
   title: string;
   subtitle: string | null;
   subgroups: SubcategoryGroup[];
-  looseProducts: GroupedProduct[]; // מוצרים שאינם תחת אף תת-קטגוריה
+  looseProducts: GridItem[]; // מוצרים (ותאים ריקים) שאינם תחת אף תת-קטגוריה
 };
 
 export type SubcategoryGroup = {
   title: string;
-  products: GroupedProduct[];
+  products: GridItem[];
 };
 
 export function groupCatalog(rows: ProductRow[]): CategoryGroup[] {
@@ -62,7 +71,15 @@ export function groupCatalog(rows: ProductRow[]): CategoryGroup[] {
       continue;
     }
 
-    // row_type === 'blank' → placeholder grid cell, handled at render time if needed
+    if (row.row_type === 'blank') {
+      if (!currentCategory) continue;
+      const slot: BlankSlot = { kind: 'blank', key: `blank-${row.id}` };
+      if (currentSubcategory) {
+        currentSubcategory.products.push(slot);
+      } else {
+        currentCategory.looseProducts.push(slot);
+      }
+    }
   }
 
   // מסננים קטגוריות ריקות לגמרי (אין מוצרים תחתן בשום מקום)
@@ -80,10 +97,11 @@ export function searchCatalog(
   const q = query.trim().toLowerCase();
   if (!q) return categories;
 
-  const matchesProduct = (p: GroupedProduct) =>
-    `${p.name ?? ''} ${p.model ?? ''} ${p.key_names ?? ''}`
-      .toLowerCase()
-      .includes(q);
+  // בזמן חיפוש פעיל, תאים ריקים מוסרים מה-scope - אין להם מה "להתאים" לחיפוש,
+  // והשארתם הייתה יוצרת רווחים מוזרים בתוצאות המסוננות
+  const matchesItem = (item: GridItem): item is GroupedProduct =>
+    !('kind' in item) &&
+    `${item.name ?? ''} ${item.model ?? ''} ${item.key_names ?? ''}`.toLowerCase().includes(q);
 
   return categories
     .map((cat) => {
@@ -94,10 +112,10 @@ export function searchCatalog(
       if (categoryTitleMatches) return cat; // הצג את כל הקטגוריה כמו שהיא
 
       const filteredSubgroups = cat.subgroups
-        .map((s) => ({ ...s, products: s.products.filter(matchesProduct) }))
+        .map((s) => ({ ...s, products: s.products.filter(matchesItem) }))
         .filter((s) => s.products.length > 0);
 
-      const filteredLoose = cat.looseProducts.filter(matchesProduct);
+      const filteredLoose = cat.looseProducts.filter(matchesItem);
 
       if (filteredSubgroups.length === 0 && filteredLoose.length === 0) {
         return null;
