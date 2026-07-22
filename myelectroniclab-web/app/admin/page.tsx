@@ -77,8 +77,8 @@ const STATUS_COLORS: Record<string, string> = {
   טופל: 'bg-green-100 text-green-800',
 };
 
-const cardClass = 'rounded-2xl bg-brand-cardbg p-5 shadow-sm';
-const sectionTitleClass = 'mb-5 flex items-center gap-2 text-lg font-bold text-brand-text';
+const cardClass = 'rounded-2xl bg-brand-cardbg p-5 shadow-md ring-1 ring-black/5';
+const sectionTitleClass = 'mb-5 flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-brand-text';
 
 function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const [password, setPassword] = useState('');
@@ -139,15 +139,41 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function StatCard({ icon, label, value, onClick }: { icon: string; label: string; value: number; onClick: () => void }) {
+const STAT_ACCENTS = [
+  { from: '#1565c0', to: '#0842a0' },
+  { from: '#e0872a', to: '#b85f10' },
+  { from: '#0ea15f', to: '#067442' },
+  { from: '#8b5cf6', to: '#5b21b6' },
+];
+
+function StatCard({
+  icon,
+  label,
+  value,
+  onClick,
+  accent = 0,
+}: {
+  icon: string;
+  label: string;
+  value: number;
+  onClick: () => void;
+  accent?: number;
+}) {
+  const colors = STAT_ACCENTS[accent % STAT_ACCENTS.length];
   return (
-    <button onClick={onClick} className={`${cardClass} flex items-center gap-4 text-right transition hover:brightness-95`}>
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-picture">
-        <Icon icon={icon} width={24} className="text-brand-text" />
+    <button
+      onClick={onClick}
+      className={`${cardClass} flex items-center gap-4 text-right transition hover:-translate-y-1 hover:shadow-xl`}
+    >
+      <div
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-md"
+        style={{ background: `linear-gradient(135deg, ${colors.from}, ${colors.to})` }}
+      >
+        <Icon icon={icon} width={24} className="text-white" />
       </div>
       <div>
-        <div className="text-2xl font-bold text-brand-text">{value}</div>
-        <div className="text-xs text-brand-textsoft">{label}</div>
+        <div className="text-2xl font-extrabold text-brand-text tabular-nums">{value}</div>
+        <div className="text-xs font-medium text-brand-textsoft">{label}</div>
       </div>
     </button>
   );
@@ -168,13 +194,13 @@ function OverviewSection({ setTab }: { setTab: (t: Tab) => void }) {
         <Icon icon="solar:widget-5-bold" width={22} /> סקירה כללית
       </h1>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard icon="solar:ticket-bold" label="פניות פתוחות" value={stats?.openTickets ?? 0} onClick={() => setTab('tickets')} />
-        <StatCard icon="solar:user-check-rounded-bold" label="מנחים ממתינים" value={stats?.pendingMentors ?? 0} onClick={() => setTab('mentors')} />
-        <StatCard icon="solar:users-group-rounded-bold" label='סה"כ משתמשים' value={stats?.totalUsers ?? 0} onClick={() => setTab('users')} />
-        <StatCard icon="solar:box-bold" label='סה"כ מוצרים' value={stats?.totalProducts ?? 0} onClick={() => setTab('add-product')} />
-        <StatCard icon="solar:presentation-graph-bold" label='סה"כ מנחים' value={stats?.totalMentors ?? 0} onClick={() => setTab('mentors-overview')} />
-        <StatCard icon="solar:user-bold" label='סה"כ סטודנטים' value={stats?.totalStudents ?? 0} onClick={() => setTab('users')} />
-        <StatCard icon="solar:users-group-two-rounded-bold" label='סה"כ כיתות' value={stats?.totalClasses ?? 0} onClick={() => setTab('mentors-overview')} />
+        <StatCard accent={1} icon="solar:ticket-bold" label="פניות פתוחות" value={stats?.openTickets ?? 0} onClick={() => setTab('tickets')} />
+        <StatCard accent={1} icon="solar:user-check-rounded-bold" label="מנחים ממתינים" value={stats?.pendingMentors ?? 0} onClick={() => setTab('mentors')} />
+        <StatCard accent={0} icon="solar:users-group-rounded-bold" label='סה"כ משתמשים' value={stats?.totalUsers ?? 0} onClick={() => setTab('users')} />
+        <StatCard accent={0} icon="solar:box-bold" label='סה"כ מוצרים' value={stats?.totalProducts ?? 0} onClick={() => setTab('add-product')} />
+        <StatCard accent={3} icon="solar:presentation-graph-bold" label='סה"כ מנחים' value={stats?.totalMentors ?? 0} onClick={() => setTab('mentors-overview')} />
+        <StatCard accent={2} icon="solar:user-bold" label='סה"כ סטודנטים' value={stats?.totalStudents ?? 0} onClick={() => setTab('users')} />
+        <StatCard accent={2} icon="solar:users-group-two-rounded-bold" label='סה"כ כיתות' value={stats?.totalClasses ?? 0} onClick={() => setTab('mentors-overview')} />
       </div>
     </div>
   );
@@ -217,7 +243,7 @@ function TicketsSection() {
         <h1 className={sectionTitleClass}>
           <Icon icon="solar:ticket-bold" width={22} /> ניהול פניות
         </h1>
-        <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm">
+        <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm ring-1 ring-black/5 transition hover:-translate-y-px hover:shadow-md">
           <Icon icon="solar:restart-bold" width={14} /> רענון
         </button>
       </div>
@@ -230,7 +256,7 @@ function TicketsSection() {
         <div className="overflow-x-auto rounded-2xl bg-brand-cardbg shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-brand-category text-right text-brand-textsoft">
+              <tr className="border-b border-brand-category bg-brand-bg/60 text-right text-[11px] font-bold tracking-wide text-brand-textsoft uppercase">
                 <th className="px-3 py-3">תאריך</th>
                 <th className="px-3 py-3">שם מלא</th>
                 <th className="px-3 py-3">נושא</th>
@@ -258,7 +284,7 @@ function TicketRow({ ticket, onSave, saving }: { ticket: Ticket; onSave: (t: Tic
   const [notes, setNotes] = useState(ticket.notes ?? '');
 
   return (
-    <tr className="border-b border-brand-category/50 text-brand-text">
+    <tr className="border-b border-brand-category/50 text-brand-text transition hover:bg-brand-bg/50">
       <td className="px-3 py-3 whitespace-nowrap text-xs">{new Date(ticket.created_at).toLocaleString('he-IL')}</td>
       <td className="px-3 py-3">{ticket.full_name || '—'}</td>
       <td className="px-3 py-3">{ticket.subject}</td>
@@ -283,7 +309,11 @@ function TicketRow({ ticket, onSave, saving }: { ticket: Ticket; onSave: (t: Tic
         />
       </td>
       <td className="px-3 py-3">
-        <button onClick={() => onSave(ticket, status, notes)} className="rounded-lg bg-brand-name px-3 py-1.5 text-xs font-bold text-brand-text">
+        <button
+          onClick={() => onSave(ticket, status, notes)}
+          className="rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:shadow-md"
+          style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
+        >
           {saving ? '✓' : 'שמור'}
         </button>
       </td>
@@ -329,7 +359,7 @@ function MentorsSection() {
         <h1 className={sectionTitleClass}>
           <Icon icon="solar:user-check-rounded-bold" width={22} /> אישור מנחים
         </h1>
-        <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm">
+        <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm ring-1 ring-black/5 transition hover:-translate-y-px hover:shadow-md">
           <Icon icon="solar:restart-bold" width={14} /> רענון
         </button>
       </div>
@@ -342,7 +372,7 @@ function MentorsSection() {
         <div className="overflow-x-auto rounded-2xl bg-brand-cardbg shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-brand-category text-right text-brand-textsoft">
+              <tr className="border-b border-brand-category bg-brand-bg/60 text-right text-[11px] font-bold tracking-wide text-brand-textsoft uppercase">
                 <th className="px-3 py-3">נרשם בתאריך</th>
                 <th className="px-3 py-3">שם מלא</th>
                 <th className="px-3 py-3">מייל</th>
@@ -410,7 +440,7 @@ function MentorsOverviewSection() {
         <h1 className={sectionTitleClass}>
           <Icon icon="solar:presentation-graph-bold" width={22} /> מנחים
         </h1>
-        <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm">
+        <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm ring-1 ring-black/5 transition hover:-translate-y-px hover:shadow-md">
           <Icon icon="solar:restart-bold" width={14} /> רענון
         </button>
       </div>
@@ -534,7 +564,7 @@ function UsersSection() {
             placeholder="חיפוש לפי שם / מייל / מכללה..."
             className="w-56 rounded-full border border-brand-category bg-brand-cardbg px-4 py-2 text-sm text-brand-text outline-none"
           />
-          <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm">
+          <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm ring-1 ring-black/5 transition hover:-translate-y-px hover:shadow-md">
             <Icon icon="solar:restart-bold" width={14} /> רענון
           </button>
         </div>
@@ -548,7 +578,7 @@ function UsersSection() {
         <div className="overflow-x-auto rounded-2xl bg-brand-cardbg shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-brand-category text-right text-brand-textsoft">
+              <tr className="border-b border-brand-category bg-brand-bg/60 text-right text-[11px] font-bold tracking-wide text-brand-textsoft uppercase">
                 <th className="px-3 py-3">שם מלא</th>
                 <th className="px-3 py-3">מייל</th>
                 <th className="px-3 py-3">טלפון</th>
@@ -682,7 +712,12 @@ function ProductEditModal({ product, onClose, onSaved }: { product: AdminProduct
 
           {error && <p className="text-center text-xs text-red-500">{error}</p>}
 
-          <button onClick={save} disabled={saving} className="mt-1 w-full rounded-xl bg-brand-name py-2.5 text-sm font-bold text-brand-text disabled:opacity-60">
+          <button
+            onClick={save}
+            disabled={saving}
+            className="mt-1 w-full rounded-xl py-2.5 text-sm font-bold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg disabled:opacity-60"
+            style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
+          >
             {saving ? 'שומר...' : 'שמור שינויים'}
           </button>
         </div>
@@ -778,13 +813,15 @@ function AddProductSection() {
       <div className="mb-5 flex gap-2">
         <button
           onClick={() => setTab('add')}
-          className={`rounded-full px-4 py-2 text-sm font-bold ${tab === 'add' ? 'bg-brand-name text-brand-text' : 'bg-brand-cardbg text-brand-textsoft'}`}
+          className={`rounded-full px-4 py-2 text-sm font-bold shadow-sm transition ${tab === 'add' ? 'text-white' : 'bg-brand-cardbg text-brand-textsoft hover:text-brand-text'}`}
+          style={tab === 'add' ? { background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' } : undefined}
         >
           מוצר חדש
         </button>
         <button
           onClick={() => setTab('all')}
-          className={`rounded-full px-4 py-2 text-sm font-bold ${tab === 'all' ? 'bg-brand-name text-brand-text' : 'bg-brand-cardbg text-brand-textsoft'}`}
+          className={`rounded-full px-4 py-2 text-sm font-bold shadow-sm transition ${tab === 'all' ? 'text-white' : 'bg-brand-cardbg text-brand-textsoft hover:text-brand-text'}`}
+          style={tab === 'all' ? { background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' } : undefined}
         >
           כל המוצרים ({products.length})
         </button>
@@ -835,7 +872,12 @@ function AddProductSection() {
 
             {status && <p className={`text-center text-xs ${status.type === 'error' ? 'text-red-500' : 'text-green-600'}`}>{status.msg}</p>}
 
-            <button onClick={handleSubmit} disabled={submitting} className="mt-1 w-full rounded-xl bg-brand-name py-2.5 text-sm font-bold text-brand-text disabled:opacity-60">
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="mt-1 w-full rounded-xl py-2.5 text-sm font-bold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
+            >
               {submitting ? 'מוסיף...' : 'הוסף מוצר'}
             </button>
           </div>
@@ -851,7 +893,7 @@ function AddProductSection() {
               placeholder="חיפוש לפי שם / דגם / קטגוריה..."
               className="w-64 rounded-full border border-brand-category bg-brand-cardbg px-4 py-2 text-sm text-brand-text outline-none"
             />
-            <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm">
+            <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm ring-1 ring-black/5 transition hover:-translate-y-px hover:shadow-md">
               <Icon icon="solar:restart-bold" width={14} /> רענון
             </button>
           </div>
@@ -877,7 +919,11 @@ function AddProductSection() {
                     <div className="truncate text-xs text-brand-textsoft">{p.resolved_category ?? 'ללא קטגוריה מזוהה'}</div>
                     <div className="text-xs font-bold text-brand-text">{p.price != null ? `₪${p.price}` : '—'}</div>
                     <div className="mt-auto flex gap-2 pt-2">
-                      <button onClick={() => setEditingProduct(p)} className="flex-1 rounded-lg bg-brand-name py-1.5 text-xs font-bold text-brand-text">
+                      <button
+                        onClick={() => setEditingProduct(p)}
+                        className="flex-1 rounded-lg py-1.5 text-xs font-bold text-white shadow-sm transition hover:shadow-md"
+                        style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
+                      >
                         עריכה
                       </button>
                       <button onClick={() => remove(p.id)} disabled={busyId === p.id} className="rounded-lg bg-red-500/15 px-2.5 py-1.5 text-xs font-bold text-red-600 disabled:opacity-50">
@@ -1039,7 +1085,12 @@ function AffiliateCheckSection() {
 
           <div className={`${cardClass} mb-5`}>
             <div className="flex flex-wrap gap-2">
-              <button onClick={runAll} disabled={running} className="rounded-full bg-brand-name px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-60">
+              <button
+                onClick={runAll}
+                disabled={running}
+                className="rounded-full px-4 py-2 text-sm font-bold text-white shadow-md transition hover:-translate-y-px hover:shadow-lg disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
+              >
                 בדוק את כל המוצרים ({withLink.length})
               </button>
               <button onClick={runPending} disabled={running || uncheckedCount === 0} className="rounded-full bg-brand-picture px-4 py-2 text-sm font-bold text-brand-text disabled:opacity-60">
@@ -1059,7 +1110,13 @@ function AffiliateCheckSection() {
                   </button>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-brand-category">
-                  <div className="h-full rounded-full bg-brand-linktext transition-all" style={{ width: `${(progress.done / progress.total) * 100}%` }} />
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${(progress.done / progress.total) * 100}%`,
+                      background: 'linear-gradient(90deg, var(--header-grad-from), var(--header-grad-to))',
+                    }}
+                  />
                 </div>
                 <p className="mt-2 text-xs text-brand-textsoft">
                   ⚠️ הבדיקה רצה מהדפדפן שלך - אם תסגור את הטאב הזה או תעבור לאתר אחר, היא תיעצר. השאר את הטאב פתוח עד שתראה הודעת סיום.
@@ -1077,7 +1134,7 @@ function AffiliateCheckSection() {
 
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-bold text-brand-text">רשימה מלאה</h2>
-            <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm">
+            <button onClick={load} className="flex items-center gap-1 rounded-full bg-brand-cardbg px-4 py-2 text-sm font-bold text-brand-text shadow-sm ring-1 ring-black/5 transition hover:-translate-y-px hover:shadow-md">
               <Icon icon="solar:restart-bold" width={14} /> רענון
             </button>
           </div>
@@ -1088,7 +1145,7 @@ function AffiliateCheckSection() {
             <div className="overflow-x-auto rounded-2xl bg-brand-cardbg shadow-sm">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-brand-category text-right text-brand-textsoft">
+                  <tr className="border-b border-brand-category bg-brand-bg/60 text-right text-[11px] font-bold tracking-wide text-brand-textsoft uppercase">
                     <th className="px-3 py-3">מוצר</th>
                     <th className="px-3 py-3">סטטוס</th>
                     <th className="px-3 py-3">עמלה</th>
@@ -1101,7 +1158,7 @@ function AffiliateCheckSection() {
                     const meta = r.check ? STATUS_META[r.check.status] : null;
                     return (
                       <Fragment key={r.id}>
-                        <tr className="border-b border-brand-category/50 text-brand-text">
+                        <tr className="border-b border-brand-category/50 text-brand-text transition hover:bg-brand-bg/50">
                           <td className="px-3 py-3">{r.name}</td>
                           <td className="px-3 py-3">
                             {meta ? (
@@ -1176,23 +1233,49 @@ export default function AdminPage() {
 
   return (
     <div className="flex min-h-screen bg-brand-bg" dir="rtl">
-      <aside className="flex w-60 shrink-0 flex-col gap-1 border-l border-brand-category bg-brand-cardbg p-4">
-        <div className="mb-4 flex items-center gap-2 px-2">
-          <Icon icon="solar:shield-user-bold" width={24} className="text-brand-linktext" />
-          <span className="text-sm font-bold text-brand-text">לוח בקרה</span>
+      <aside
+        className="flex w-64 shrink-0 flex-col gap-1 p-4 shadow-[4px_0_24px_-8px_rgba(0,0,0,0.4)]"
+        style={{ background: 'linear-gradient(190deg, #0d2a52, #071120)' }}
+      >
+        <div className="mb-6 flex items-center gap-2.5 px-2 pt-1">
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-xl shadow-lg"
+            style={{ background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }}
+          >
+            <Icon icon="solar:shield-user-bold" width={19} className="text-white" />
+          </div>
+          <div>
+            <div className="text-sm font-bold text-white">לוח בקרה</div>
+            <div className="text-[10px] font-bold tracking-widest text-white/40 uppercase">MyElectronicLab</div>
+          </div>
         </div>
+
+        <div className="mb-1 px-3 text-[10px] font-bold tracking-widest text-white/35 uppercase">ניהול</div>
         {NAV_ITEMS.map((item) => (
           <button
             key={item.tab}
             onClick={() => setTab(item.tab)}
             className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-bold transition ${
-              tab === item.tab ? 'bg-brand-name text-brand-text' : 'text-brand-textsoft hover:bg-brand-bg'
+              tab === item.tab ? 'text-white shadow-md' : 'text-white/55 hover:bg-white/8 hover:text-white/90'
             }`}
+            style={
+              tab === item.tab
+                ? { background: 'linear-gradient(135deg, var(--header-grad-from), var(--header-grad-to))' }
+                : undefined
+            }
           >
             <Icon icon={item.icon} width={18} />
             {item.label}
           </button>
         ))}
+
+        <a
+          href="/"
+          className="mt-auto flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold text-white/40 transition hover:bg-white/8 hover:text-white/80"
+        >
+          <Icon icon="solar:arrow-right-linear" width={16} />
+          חזרה לאתר
+        </a>
       </aside>
 
       <main className="flex-1 p-6">
