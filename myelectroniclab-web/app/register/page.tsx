@@ -1,5 +1,7 @@
-// Version: 1.5
-// Title: Registration Page | Change from v1.4: UI/UX refinement pass (visual
+// Version: 1.6
+// Title: Registration Page | Change from v1.5: email field now uses
+// EmailAutocomplete (gmail.com-first domain suggestions as you type). Change
+// from v1.4: UI/UX refinement pass (visual
 // only, no behavior change) - added AuthBrandHeader above both the form and
 // the "check your email" screen, gradient top accent bar (via a `before:`
 // pseudo-element, no extra DOM nesting) + gradient submit button, matching
@@ -24,6 +26,7 @@ import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
 import { AVATAR_ICONS, DEFAULT_AVATAR_KEY } from '@/lib/avatar-icons';
 import AuthBrandHeader from '@/components/AuthBrandHeader';
+import EmailAutocomplete from '@/components/EmailAutocomplete';
 
 const inputClass =
   'w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-name focus:ring-2 focus:ring-brand-name/40';
@@ -132,12 +135,7 @@ export default function RegisterPage() {
 
           <div>
             <label className={labelClass}>מייל</label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={(e) => update('email', e.target.value)}
-              className={inputClass}
-            />
+            <EmailAutocomplete value={form.email} onChange={(v) => update('email', v)} className={inputClass} />
           </div>
 
           <div>

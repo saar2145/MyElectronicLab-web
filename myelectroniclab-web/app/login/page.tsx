@@ -1,5 +1,7 @@
-// Version: 1.4
-// Title: Login Page | Change from v1.3: UI/UX refinement pass (visual only,
+// Version: 1.5
+// Title: Login Page | Change from v1.4: email field now uses
+// EmailAutocomplete (gmail.com-first domain suggestions as you type).
+// Change from v1.3: UI/UX refinement pass (visual only,
 // no behavior change) - added a brand header above the card (matches the auth
 // pages family: register/forgot-password/reset-password/join-class), gradient
 // top accent bar + submit button, refined input focus ring. Change from v1.2:
@@ -17,6 +19,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
 import AuthBrandHeader from '@/components/AuthBrandHeader';
+import EmailAutocomplete from '@/components/EmailAutocomplete';
 
 const inputClass =
   'w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-name focus:ring-2 focus:ring-brand-name/40';
@@ -68,13 +71,7 @@ export default function LoginPage() {
         <div className="flex flex-col gap-3">
           <div>
             <label className={labelClass}>מייל</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={inputClass}
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-            />
+            <EmailAutocomplete value={email} onChange={setEmail} onEnter={handleSubmit} className={inputClass} />
           </div>
 
           <div>

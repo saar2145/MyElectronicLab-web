@@ -1,5 +1,7 @@
-// Version: 1.1
-// Title: Forgot Password Page | Change from v1.0: UI/UX refinement pass
+// Version: 1.2
+// Title: Forgot Password Page | Change from v1.1: email field now uses
+// EmailAutocomplete (gmail.com-first domain suggestions as you type). Change
+// from v1.0: UI/UX refinement pass
 // (visual only) - AuthBrandHeader + gradient accent bar/button, matching the
 // rest of the auth-page family. Important Data: sends a Supabase recovery
 // email via resetPasswordForEmail, redirecting the emailed link to
@@ -13,6 +15,7 @@ import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import { getSupabaseAuthClient } from '@/lib/supabase-browser';
 import AuthBrandHeader from '@/components/AuthBrandHeader';
+import EmailAutocomplete from '@/components/EmailAutocomplete';
 
 const inputClass =
   'w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-name focus:ring-2 focus:ring-brand-name/40';
@@ -66,14 +69,9 @@ export default function ForgotPasswordPage() {
             <h1 className="mb-1 text-lg font-bold text-brand-text">שכחתי סיסמה</h1>
             <p className="mb-5 text-sm text-brand-textsoft">נשלח לך קישור לאיפוס לכתובת המייל שלך</p>
 
-            <input
-              type="email"
-              placeholder="מייל"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              className={`mb-3 ${inputClass}`}
-            />
+            <div className="mb-3">
+              <EmailAutocomplete value={email} onChange={setEmail} onEnter={handleSubmit} placeholder="מייל" className={inputClass} />
+            </div>
 
             {error && <p className="mb-3 text-xs text-red-500">{error}</p>}
 

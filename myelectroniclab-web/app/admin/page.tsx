@@ -1373,7 +1373,7 @@ function CategoryStructureSection() {
                       title="העבר לקטגוריה אחרת"
                       className="rounded p-1 text-brand-textsoft transition hover:bg-brand-cardbg"
                     >
-                      <Icon icon="solar:folder-favourite-bold" width={15} />
+                      <Icon icon="solar:folder-favourite-star-bold" width={15} />
                     </button>
                   )}
 
