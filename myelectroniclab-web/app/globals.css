@@ -82,3 +82,14 @@ body {
 .flash-added-overlay {
   animation: flashCardAnim 1.5s ease forwards;
 }
+
+/* פס טעינה (app/loading.tsx) - לופ אינסופי, לא קשור למשך הטעינה בפועל
+   (Next.js מציג/מסתיר את הרכיב הזה לפי כמה זמן שה-Server Component לוקח) */
+@keyframes loadingBarAnim {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+.loading-bar-fill {
+  width: 0%;
+  animation: loadingBarAnim 1.1s ease-in-out infinite alternate;
+}
