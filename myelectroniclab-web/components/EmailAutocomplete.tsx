@@ -108,7 +108,8 @@ export default function EmailAutocomplete({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => select(domain)}
-                className={`flex w-full items-center gap-1 px-3 py-2 text-right text-sm transition ${
+                dir="ltr"
+                className={`flex w-full items-center gap-1 px-3 py-2 text-left text-sm transition ${
                   i === activeIndex ? 'bg-brand-bg text-brand-text' : 'text-brand-text hover:bg-brand-bg'
                 }`}
               >
