@@ -1,17 +1,28 @@
-// Version: 1.0
-// Title: Next.js Config | Important Data: adds the HTTP security headers the
+// Version: 1.1
+// Title: Next.js Config | Change from v1.0: FIX - the hash-only script-src
+// broke the entire site (every page stuck forever on app/loading.tsx,
+// nothing ever hydrated) - deployed, caught it live via the browser, and
+// reverted this part immediately. Root cause: Next.js's App Router injects
+// its OWN inline <script> tags for streaming/hydration (the
+// `self.__next_f.push(...)` payloads), not just the one theme-init script I
+// hashed - a hash-source only CSP has no way to allow those since they don't
+// match any listed hash, and per the CSP spec 'unsafe-inline' is ignored
+// entirely once ANY hash-source is present (that's for old-browser
+// fallback only, modern browsers that understand hashes drop unsafe-inline
+// the moment a hash-source exists) - so combining them doesn't work either.
+// script-src is 'self' 'unsafe-inline' now (no hash) as an immediate fix;
+// the secure correct fix is a per-request nonce generated in proxy.ts
+// (middleware, not next.config.ts, since headers() here is static/built
+// once) that Next.js auto-applies to its own inline scripts - noted as a
+// follow-up, not worth blocking the emergency revert on getting it exactly
+// right in one pass. Important Data: adds the HTTP security headers the
 // app was missing entirely (found during the pre-public-launch security
 // review) - no CSP, no clickjacking protection, no HSTS, nothing. The CSP
 // below is scoped to the actual external resources this app uses client-side
 // (checked directly, not guessed):
-//  - script-src allows exactly one inline script via its sha256 hash - the
-//    theme-flash-prevention script in app/layout.tsx. If that script's exact
-//    text ever changes, this hash must be recomputed or the theme init will
-//    silently stop running (falls back to light mode, no visible error).
 //  - style-src needs 'unsafe-inline' because the codebase uses React's
 //    style={{...}} prop extensively (dynamic gradients etc.) - those render
-//    as inline style="" attributes, which CSP style-src governs. This is a
-//    much lower-risk allowance than script-src unsafe-inline would be.
+//    as inline style="" attributes, which CSP style-src governs.
 //  - connect-src allows the Supabase project URL (all reads/writes go
 //    through supabase-js) and api.iconify.design (@iconify/react fetches
 //    icon data from there at runtime - confirmed by how many solar:* icons
@@ -27,12 +38,11 @@
 
 import type { NextConfig } from "next";
 
-const THEME_SCRIPT_HASH = "'sha256-BtXmztwt2bpZ807buKIMmL7bwFdPyAVVINZYQDtVuzM='";
 const SUPABASE_URL = "https://viqmlpipgzrfulbauotv.supabase.co";
 
 const csp = [
   "default-src 'self'",
-  `script-src 'self' ${THEME_SCRIPT_HASH}`,
+  "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' https: data:",
   "font-src 'self'",
