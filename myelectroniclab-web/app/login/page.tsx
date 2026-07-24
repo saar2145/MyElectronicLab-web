@@ -1,5 +1,11 @@
-// Version: 1.5
-// Title: Login Page | Change from v1.4: email field now uses
+// Version: 1.6
+// Title: Login Page | Change from v1.5: FIX - the ?next= redirect target is
+// now validated to be a same-origin relative path before use (must start
+// with "/" and not "//", which browsers treat as protocol-relative to an
+// external host) - found during the pre-public-launch security review as an
+// open-redirect risk (a crafted /login?next=https://evil.example link could
+// otherwise send a user who just "successfully logged in" straight to a
+// phishing page). Change from v1.4: email field now uses
 // EmailAutocomplete (gmail.com-first domain suggestions as you type).
 // Change from v1.3: UI/UX refinement pass (visual only,
 // no behavior change) - added a brand header above the card (matches the auth
@@ -24,6 +30,12 @@ import EmailAutocomplete from '@/components/EmailAutocomplete';
 const inputClass =
   'w-full rounded-lg border border-brand-category bg-brand-bg px-3 py-2 text-sm text-brand-text outline-none transition focus:border-brand-name focus:ring-2 focus:ring-brand-name/40';
 const labelClass = 'mb-1 block text-xs font-bold text-brand-textsoft';
+
+function safeNextPath(next: string | null): string {
+  if (!next) return '/';
+  if (!next.startsWith('/') || next.startsWith('//')) return '/';
+  return next;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -52,7 +64,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push(searchParams.get('next') || '/');
+    router.push(safeNextPath(searchParams.get('next')));
     router.refresh();
   }
 

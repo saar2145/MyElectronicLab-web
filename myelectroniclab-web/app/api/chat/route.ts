@@ -1,15 +1,21 @@
-// Version: 1.0
-// Title: Chat API Route | Important Data: POST /api/chat - ports
+// Version: 1.1
+// Title: Chat API Route | Change from v1.0: FIX - this endpoint calls OpenAI
+// (real cost per request, up to 4 chained completions per single chat
+// message) with no auth and no request limit - found during the
+// pre-public-launch security review as the top risk (an abuse loop here
+// could exhaust the OpenAI budget fast). Now rate-limited to 8 messages per
+// 5 minutes per IP via lib/rate-limit.ts, checked before the OpenAI key is
+// even touched. Important Data: POST /api/chat - ports
 // processChatMessage() from Code.gs almost verbatim, including the full system
 // prompt (two-stage project-idea flow, single-recommendation rule, site FAQ,
 // security guardrails). Max 4 loop iterations, last one forces a final answer
-// (no tools offered). TODO: proper rate limiting (Upstash) not yet configured -
-// current protection is input length caps only.
+// (no tools offered).
 
 import { NextRequest, NextResponse } from 'next/server';
 import { searchProductsTool } from '@/lib/chat-tools-products';
 import { searchProjectExamplesTool } from '@/lib/chat-tools-project-examples';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 const SYSTEM_PROMPT = `אתה עוזר טכני ידידותי של חנות רכיבי אלקטרוניקה בישראל בשם MyElectronicLab.
 כל המוצרים רשומים באנגלית בלבד - חפש תמיד באנגלית.
@@ -121,6 +127,11 @@ async function logChat(question: string, answer: string, toolsUsed: string[]) {
 
 export async function POST(req: NextRequest) {
   try {
+    const allowed = await checkRateLimit(`chat:${getClientIp(req)}`, 8, 5 * 60);
+    if (!allowed) {
+      return NextResponse.json({ error: 'יותר מדי הודעות. נסה שוב בעוד כמה דקות.' }, { status: 429 });
+    }
+
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(

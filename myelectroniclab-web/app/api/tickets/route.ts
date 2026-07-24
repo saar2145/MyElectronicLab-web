@@ -1,11 +1,14 @@
-// Version: 1.0
-// Title: Tickets API Route | Important Data: POST /api/tickets - writes to the
+// Version: 1.1
+// Title: Tickets API Route | Change from v1.0: FIX - unauthenticated POST
+// endpoint had no request limit at all (found during the pre-public-launch
+// security review) - now capped at 5 submissions per hour per IP via
+// lib/rate-limit.ts. Important Data: POST /api/tickets - writes to the
 // "tickets" table via the server-only Supabase client. Basic input sanitization
 // (length caps) mirrors the original Code.gs submitTicket() limits.
-// TODO: proper rate limiting (Upstash Redis) - not yet configured.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 function clamp(value: unknown, maxLen: number): string {
   return String(value ?? '').trim().slice(0, maxLen);
@@ -13,6 +16,11 @@ function clamp(value: unknown, maxLen: number): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const allowed = await checkRateLimit(`tickets:${getClientIp(req)}`, 5, 60 * 60);
+    if (!allowed) {
+      return NextResponse.json({ error: 'יותר מדי פניות. נסה שוב מאוחר יותר.' }, { status: 429 });
+    }
+
     const body = await req.json();
 
     const subject = clamp(body.subject, 100);
